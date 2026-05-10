@@ -557,7 +557,7 @@ function sendChat() {
   thinking.innerHTML = '<div class="msg-bubble">...</div>';
   document.getElementById("chat-messages").appendChild(thinking);
   var summary = Object.keys(userStatuses).slice(0, 50).map(function(id) { return id + ":" + userStatuses[id]; }).join(", ");
-  var system = "Du bist Assistent fuer ein Streaming-Dashboard. Status: want, watching, aborted, done. Wenn Status geaendert: <status_update>{id:series-123,status:done}</status_update>. Aktuelle Status: " + summary + ". Antworte auf Deutsch, kurz.";
+  var system = "Du bist Assistent fuer ein Streaming-Dashboard. Status: want, watching, aborted, done. Wenn Status geaendert antworte mit XML status_update Tag mit id und status. Aktuelle Status: " + summary + ". Antworte auf Deutsch, kurz.";
   fetch(CLAUDE_API, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
