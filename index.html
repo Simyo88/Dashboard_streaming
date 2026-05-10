@@ -182,14 +182,14 @@ var TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZ
 var CLAUDE_API = "https://api.anthropic.com/v1/messages";
 
 var PROVIDERS = {
-  8:   {name:"Netflix",      color:"#E50914", short:"Netflix"},
-  119: {name:"Amazon Prime", color:"#00A8E0", short:"Amazon Prime"},
-  337: {name:"Disney+",      color:"#113CCF", short:"Disney+"},
-  350: {name:"Apple TV+",    color:"#1C1C1E", short:"Apple TV+"},
-  384: {name:"HBO Max",      color:"#5822B4", short:"HBO Max"},
-  39:  {name:"WOW",          color:"#FF6B35", short:"WOW"},
-  1773:{name:"RTL+",         color:"#E4002B", short:"RTL+"},
-  207: {name:"Joyn",         color:"#00C896", short:"Joyn"}
+  "8":      {name:"Netflix",      color:"#E50914", short:"Netflix",      pid:"8"},
+  "119":    {name:"Amazon Prime", color:"#00A8E0", short:"Amazon Prime", pid:"119|9|10"},
+  "337":    {name:"Disney+",      color:"#113CCF", short:"Disney+",      pid:"337"},
+  "350":    {name:"Apple TV+",    color:"#1C1C1E", short:"Apple TV+",    pid:"350"},
+  "384":    {name:"HBO Max",      color:"#5822B4", short:"HBO Max",       pid:"384|1899"},
+  "39":     {name:"WOW",          color:"#FF6B35", short:"WOW",           pid:"39|29|341"},
+  "1773":   {name:"RTL+",         color:"#E4002B", short:"RTL+",          pid:"1773"},
+  "207":    {name:"Joyn",         color:"#00C896", short:"Joyn",          pid:"207"}
 };
 
 var STATUS_CONFIG = {
@@ -269,14 +269,14 @@ function renderProviderBar() {
   var html = '<div class="provider-pill' + (!currentProvider ? " active" : "") + '" data-pid="0" style="' + (!currentProvider ? "background:var(--accent);color:#fff" : "") + '">Alle</div>';
   Object.keys(PROVIDERS).forEach(function(id) {
     var p = PROVIDERS[id];
-    var active = currentProvider === parseInt(id);
+    var active = currentProvider === id;
     html += '<div class="provider-pill' + (active ? " active" : "") + '" data-pid="' + id + '" style="' + (active ? "background:" + p.color + ";color:#fff;border-color:" + p.color : "") + '">' + p.short + '</div>';
   });
   bar.innerHTML = html;
   bar.querySelectorAll(".provider-pill").forEach(function(pill) {
     pill.addEventListener("click", function() {
-      var pid = parseInt(this.getAttribute("data-pid"));
-      currentProvider = pid === 0 ? null : pid;
+      var pid = this.getAttribute("data-pid");
+      currentProvider = pid === "0" ? null : pid;
       renderProviderBar();
       if (currentTab === "browse") loadBrowse();
     });
@@ -313,7 +313,7 @@ function loadBrowse() {
   ]).then(function(results) {
     var tvItems = (results[0].results || []).slice(0, 20).map(function(i) { return Object.assign({}, i, {mediaType:"series", title: i.name}); });
     var movieItems = (results[1].results || []).slice(0, 20).map(function(i) { return Object.assign({}, i, {mediaType:"movie"}); });
-    var pname = currentProvider ? PROVIDERS[currentProvider].name : "Allen Anbietern";
+    var pname = currentProvider && PROVIDERS[currentProvider] ? PROVIDERS[currentProvider].name : "Allen Anbietern";
     var html = '<div class="section-header">Top Serien auf ' + pname + '</div>';
     html += '<div class="grid">' + tvItems.map(cardHTML).join("") + '</div>';
     html += '<div class="section-header" style="margin-top:24px">Top Filme auf ' + pname + '</div>';
