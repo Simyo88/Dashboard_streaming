@@ -5,7 +5,7 @@ exports.handler = async function(event, context) {
     { name: "Disney+",      slug: "dnp" },
     { name: "Apple TV+",    slug: "atp" },
     { name: "WOW",          slug: "wow" },
-    { name: "HBO Max",      slug: "max" },
+    { name: "HBO Max",      slug: "hbm" },
     { name: "RTL+",         slug: "rtl" },
     { name: "Joyn",         slug: "joy" },
   ];
@@ -50,12 +50,13 @@ exports.handler = async function(event, context) {
         const titles = data?.data?.popularTitles;
         results[provider.name] = {
           status: "OK",
+          slug: provider.slug,
           total: titles?.totalCount || 0,
           sample: (titles?.edges || []).slice(0, 3).map(e => e.node.content.title)
         };
       } else {
         const text = await res.text();
-        results[provider.name] = { status: "HTTP " + res.status, body: text.slice(0, 300) };
+        results[provider.name] = { status: "HTTP " + res.status, slug: provider.slug };
       }
     } catch(e) {
       results[provider.name] = { status: "Fehler: " + e.message };
