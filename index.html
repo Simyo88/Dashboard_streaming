@@ -182,13 +182,14 @@ var TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZ
 var CLAUDE_API = "https://api.anthropic.com/v1/messages";
 
 var PROVIDERS = {
-  8:   {name:"Netflix",      color:"#E50914", short:"NF"},
-  119: {name:"Amazon Prime", color:"#00A8E0", short:"AP"},
-  337: {name:"Disney+",      color:"#113CCF", short:"D+"},
-  350: {name:"Apple TV+",    color:"#555555", short:"ATV"},
+  8:   {name:"Netflix",      color:"#E50914", short:"Netflix"},
+  119: {name:"Amazon Prime", color:"#00A8E0", short:"Amazon Prime"},
+  337: {name:"Disney+",      color:"#113CCF", short:"Disney+"},
+  350: {name:"Apple TV+",    color:"#1C1C1E", short:"Apple TV+"},
+  384: {name:"HBO Max",      color:"#5822B4", short:"HBO Max"},
   39:  {name:"WOW",          color:"#FF6B35", short:"WOW"},
-  384: {name:"HBO Max",      color:"#5822B4", short:"HBO"},
-  207: {name:"Joyn",         color:"#00C896", short:"JN"}
+  1773:{name:"RTL+",         color:"#E4002B", short:"RTL+"},
+  207: {name:"Joyn",         color:"#00C896", short:"Joyn"}
 };
 
 var STATUS_CONFIG = {
@@ -307,8 +308,8 @@ function loadBrowse() {
   setLoading("Lade Top-Titel...");
   var pid = currentProvider || 8;
   Promise.all([
-    tmdbFetch("/discover/tv?with_watch_providers=" + pid + "&watch_region=DE&sort_by=vote_average.desc&vote_count.gte=20&page=1"),
-    tmdbFetch("/discover/movie?with_watch_providers=" + pid + "&watch_region=DE&sort_by=vote_average.desc&vote_count.gte=50&page=1")
+    tmdbFetch("/discover/tv?with_watch_providers=" + pid + "&watch_region=DE&sort_by=popularity.desc&page=1"),
+    tmdbFetch("/discover/movie?with_watch_providers=" + pid + "&watch_region=DE&sort_by=popularity.desc&page=1")
   ]).then(function(results) {
     var tvItems = (results[0].results || []).slice(0, 20).map(function(i) { return Object.assign({}, i, {mediaType:"series", title: i.name}); });
     var movieItems = (results[1].results || []).slice(0, 20).map(function(i) { return Object.assign({}, i, {mediaType:"movie"}); });
