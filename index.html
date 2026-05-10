@@ -2,167 +2,331 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>StreamBoard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0A0A0F; color: #E8E8F0; font-family: Georgia, serif; min-height: 100vh; }
-  
-  header { position: sticky; top: 0; z-index: 100; background: rgba(10,10,15,0.97); border-bottom: 1px solid #1E1E2E; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(12px); }
-  .logo-sub { font-size: 10px; letter-spacing: 4px; color: #444; text-transform: uppercase; margin-bottom: 2px; }
-  .logo { font-size: 24px; font-weight: 300; color: #E8E8F0; }
-  .logo span { color: #7B61FF; }
-  
-  .header-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  button { font-family: Georgia, serif; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
-  .btn-tab { background: transparent; border: 1px solid #2A2A3E; color: #777; padding: 7px 16px; font-size: 12px; letter-spacing: 1px; }
-  .btn-tab.active { background: #7B61FF; border-color: #7B61FF; color: #fff; }
-  .btn-chat { background: transparent; border: 1px solid #2A2A3E; color: #777; padding: 7px 16px; font-size: 12px; letter-spacing: 1px; }
-  .btn-chat.active { background: #FF6B35; border-color: #FF6B35; color: #fff; }
-  .btn-reload { background: transparent; border: 1px solid #2A2A3E; color: #777; padding: 7px 12px; font-size: 14px; }
-  
-  .layout { display: flex; min-height: calc(100vh - 65px); }
-  .main { flex: 1; padding: 24px 28px; }
-  
-  .filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 22px; }
-  .filter-label { font-size: 10px; color: #444; letter-spacing: 2px; text-transform: uppercase; margin-right: 4px; }
-  .btn-filter { background: transparent; border: 1px solid #252535; color: #555; padding: 4px 10px; font-size: 10px; font-family: Georgia, serif; }
-  .btn-filter.active { color: #fff; }
-  .filter-sep { width: 1px; height: 18px; background: #252535; margin: 0 2px; }
-  .count { margin-left: auto; font-size: 11px; color: #333; }
-  
-  .error-box { background: #160808; border: 1px solid #5A1A1A; border-radius: 6px; padding: 14px 18px; margin-bottom: 20px; color: #CC4444; font-size: 13px; display: flex; align-items: center; gap: 12px; }
-  .btn-retry { background: #7B61FF; border: none; color: #fff; padding: 5px 14px; font-size: 11px; font-family: Georgia, serif; border-radius: 3px; }
-  
-  .loader { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 16px; }
-  .spinner { width: 36px; height: 36px; border: 2px solid #1E1E2E; border-top: 2px solid #7B61FF; border-radius: 50%; animation: spin 1s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loader-msg { color: #444; font-size: 12px; letter-spacing: 2px; }
-  
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 16px; }
-  
-  .card { background: #0D0D1A; border: 1px solid #181828; border-radius: 6px; overflow: hidden; transition: all 0.2s; }
-  .card:hover { border-color: #7B61FF; transform: translateY(-2px); }
-  .poster-wrap { position: relative; padding-top: 150%; background: #090916; }
-  .poster-wrap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .poster-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 36px; }
-  .score-badge { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.88); border-radius: 3px; padding: 2px 6px; font-size: 11px; font-weight: bold; border: 1px solid; }
-  .status-icon { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.88); border-radius: 3px; padding: 2px 6px; font-size: 13px; cursor: pointer; }
-  .card-body { padding: 10px; }
-  .card-title { font-size: 12px; color: #C8C8D8; line-height: 1.35; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .provider-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 6px; }
-  .provider-tag { border-radius: 2px; padding: 2px 5px; font-size: 8px; color: #fff; font-weight: bold; }
-  .no-provider { font-size: 9px; color: #2A2A3A; }
-  .status-label { font-size: 9px; cursor: pointer; letter-spacing: 0.3px; }
-  
-  /* Chat */
-  .chat-panel { width: 310px; border-left: 1px solid #1A1A2A; display: flex; flex-direction: column; background: #0B0B15; position: sticky; top: 65px; height: calc(100vh - 65px); }
-  .chat-header { padding: 14px 16px; border-bottom: 1px solid #1A1A2A; font-size: 10px; letter-spacing: 2px; color: #444; text-transform: uppercase; }
-  .chat-messages { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-  .msg { display: flex; }
-  .msg.user { justify-content: flex-end; }
-  .msg-bubble { max-width: 88%; border-radius: 8px; padding: 9px 13px; font-size: 12px; line-height: 1.5; }
-  .msg.user .msg-bubble { background: #7B61FF; color: #fff; }
-  .msg.assistant .msg-bubble { background: #161626; color: #B8B8C8; }
-  .chat-thinking { color: #333; font-size: 11px; letter-spacing: 2px; padding: 4px 0; }
-  .chat-input-row { padding: 14px 16px; border-top: 1px solid #1A1A2A; display: flex; gap: 8px; }
-  .chat-input { flex: 1; background: #09090F; border: 1px solid #202030; border-radius: 4px; padding: 9px 12px; color: #E0E0F0; font-size: 12px; font-family: Georgia, serif; outline: none; }
-  .chat-send { background: #7B61FF; border: none; border-radius: 4px; padding: 9px 13px; color: #fff; font-size: 15px; }
-  .chat-send:disabled { opacity: 0.5; }
+:root {
+  --bg: #e8eef7;
+  --glass: rgba(255,255,255,0.55);
+  --glass-border: rgba(255,255,255,0.8);
+  --glass-shadow: rgba(100,120,160,0.15);
+  --text: #1a2340;
+  --text-muted: #6b7a99;
+  --accent: #5b6ef5;
+  --accent2: #f5705b;
+  --card-radius: 18px;
+  --pill-radius: 50px;
+  --want: #a78bfa;
+  --watching: #f5a623;
+  --aborted: #ef4444;
+  --done: #22c55e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: linear-gradient(135deg, #dce6f5 0%, #e8eef7 50%, #d5e4f0 100%); min-height: 100vh; color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif; }
+
+/* Auth Screen */
+#auth-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+.auth-card { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 28px; padding: 48px 36px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 8px 40px var(--glass-shadow); }
+.auth-logo { font-size: 32px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.auth-logo span { color: var(--accent); }
+.auth-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 36px; }
+.auth-input { width: 100%; padding: 14px 18px; border: 1.5px solid rgba(255,255,255,0.8); border-radius: 14px; background: rgba(255,255,255,0.7); font-size: 16px; color: var(--text); outline: none; margin-bottom: 14px; }
+.auth-input:focus { border-color: var(--accent); }
+.auth-btn { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.auth-btn:hover { opacity: 0.9; }
+.auth-msg { margin-top: 16px; font-size: 14px; color: var(--text-muted); }
+
+/* App */
+#app { display: none; min-height: 100vh; }
+
+/* Header */
+header { position: sticky; top: 0; z-index: 200; background: rgba(232,238,247,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.6); padding: 12px 16px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.logo { font-size: 22px; font-weight: 700; }
+.logo span { color: var(--accent); }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.icon-btn { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 12px; padding: 8px 12px; font-size: 16px; cursor: pointer; color: var(--text); }
+
+/* Status tabs */
+.status-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.status-tabs::-webkit-scrollbar { display: none; }
+.status-tab { flex-shrink: 0; padding: 8px 16px; border-radius: var(--pill-radius); border: 1.5px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.5); color: var(--text-muted); white-space: nowrap; }
+.status-tab.active-want { background: var(--want); color: #fff; border-color: var(--want); }
+.status-tab.active-watching { background: var(--watching); color: #fff; border-color: var(--watching); }
+.status-tab.active-aborted { background: var(--aborted); color: #fff; border-color: var(--aborted); }
+.status-tab.active-done { background: var(--done); color: #fff; border-color: var(--done); }
+.status-tab.active-browse { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Provider filter */
+.provider-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 12px 16px 4px; }
+.provider-scroll::-webkit-scrollbar { display: none; }
+.provider-pill { flex-shrink: 0; padding: 7px 16px; border-radius: var(--pill-radius); border: 1.5px solid rgba(255,255,255,0.7); background: rgba(255,255,255,0.5); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
+.provider-pill.active { color: #fff; }
+
+/* Search bar */
+.search-wrap { padding: 8px 16px 12px; }
+.search-input { width: 100%; padding: 12px 18px; border-radius: var(--pill-radius); border: 1.5px solid rgba(255,255,255,0.8); background: rgba(255,255,255,0.7); font-size: 15px; color: var(--text); outline: none; }
+.search-input:focus { border-color: var(--accent); }
+
+/* Main content */
+main { padding: 12px 16px 100px; }
+
+/* Section header */
+.section-header { font-size: 18px; font-weight: 700; margin: 16px 0 12px; color: var(--text); }
+
+/* Grid */
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (min-width: 480px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 700px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 900px) { .grid { grid-template-columns: repeat(5, 1fr); } }
+@media (min-width: 1100px) { .grid { grid-template-columns: repeat(6, 1fr); } }
+
+/* Card */
+.card { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: var(--card-radius); overflow: hidden; box-shadow: 0 4px 20px var(--glass-shadow); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+.card:active { transform: scale(0.97); }
+@media (hover: hover) { .card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px var(--glass-shadow); } }
+.poster-wrap { position: relative; padding-top: 150%; background: rgba(255,255,255,0.3); }
+.poster-wrap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.poster-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+.score-badge { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.9); border-radius: 8px; padding: 3px 7px; font-size: 11px; font-weight: 700; }
+.status-dot { position: absolute; top: 8px; left: 8px; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; background: rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.card-body { padding: 10px; }
+.card-title { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.35; margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.card-seasons { font-size: 10px; color: var(--text-muted); }
+.provider-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 5px; }
+.provider-tag { border-radius: 5px; padding: 2px 5px; font-size: 8px; color: #fff; font-weight: 800; }
+.star { color: #f5a623; font-size: 10px; }
+.card-year { font-size: 10px; color: var(--text-muted); }
+
+/* Detail modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(20,30,60,0.4); backdrop-filter: blur(8px); z-index: 500; display: flex; align-items: flex-end; justify-content: center; }
+@media (min-width: 600px) { .modal-overlay { align-items: center; } }
+.modal { background: linear-gradient(160deg, #f0f5ff, #e8eef7); border-radius: 28px 28px 0 0; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; padding: 24px; box-shadow: 0 -8px 40px rgba(0,0,0,0.2); }
+@media (min-width: 600px) { .modal { border-radius: 28px; max-height: 80vh; } }
+.modal-handle { width: 40px; height: 4px; background: rgba(0,0,0,0.15); border-radius: 2px; margin: 0 auto 20px; }
+.modal-poster-row { display: flex; gap: 16px; margin-bottom: 20px; }
+.modal-poster { width: 90px; flex-shrink: 0; border-radius: 14px; overflow: hidden; }
+.modal-poster img { width: 100%; display: block; }
+.modal-info { flex: 1; }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.modal-overview { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px; }
+.modal-status-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.modal-status-btn { padding: 8px 16px; border-radius: var(--pill-radius); border: 2px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.6); color: var(--text-muted); }
+.modal-status-btn.active { color: #fff; }
+.seasons-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.season-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.6); border-radius: 12px; margin-bottom: 8px; }
+.season-label { font-size: 13px; font-weight: 600; }
+.season-btns { display: flex; gap: 6px; }
+.season-btn { padding: 5px 12px; border-radius: var(--pill-radius); border: 1.5px solid transparent; font-size: 11px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.6); color: var(--text-muted); }
+.season-btn.active { color: #fff; }
+
+/* Chat button */
+.chat-fab { position: fixed; bottom: 24px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 22px; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(91,110,245,0.4); z-index: 300; display: flex; align-items: center; justify-content: center; }
+
+/* Chat panel */
+.chat-overlay { position: fixed; inset: 0; z-index: 400; display: flex; align-items: flex-end; justify-content: center; background: rgba(20,30,60,0.3); backdrop-filter: blur(6px); }
+.chat-panel { background: linear-gradient(160deg, #f0f5ff, #e8eef7); border-radius: 28px 28px 0 0; width: 100%; max-width: 560px; height: 70vh; display: flex; flex-direction: column; padding: 16px; box-shadow: 0 -8px 40px rgba(0,0,0,0.15); }
+.chat-handle { width: 40px; height: 4px; background: rgba(0,0,0,0.15); border-radius: 2px; margin: 0 auto 14px; }
+.chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
+.msg { display: flex; }
+.msg.user { justify-content: flex-end; }
+.msg-bubble { max-width: 85%; border-radius: 18px; padding: 10px 14px; font-size: 14px; line-height: 1.5; }
+.msg.user .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.msg.assistant .msg-bubble { background: rgba(255,255,255,0.8); color: var(--text); border-bottom-left-radius: 4px; }
+.chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.chat-input { flex: 1; padding: 12px 16px; border-radius: var(--pill-radius); border: 1.5px solid rgba(255,255,255,0.8); background: rgba(255,255,255,0.8); font-size: 15px; color: var(--text); outline: none; }
+.chat-send { background: var(--accent); border: none; border-radius: 50%; width: 44px; height: 44px; color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+
+/* Loader */
+.loader { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 14px; }
+.spinner { width: 36px; height: 36px; border: 3px solid rgba(91,110,245,0.2); border-top: 3px solid var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-msg { font-size: 13px; color: var(--text-muted); }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 14px; }
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
 </style>
 </head>
 <body>
 
-<header>
-  <div>
-    <div class="logo-sub">Persoenliches</div>
-    <div class="logo">Stream<span>Board</span></div>
+<!-- Auth -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">Stream<span>Board</span></div>
+    <div class="auth-sub">Dein persoenliches Streaming-Dashboard</div>
+    <input class="auth-input" id="auth-email" type="email" placeholder="deine@email.de">
+    <button class="auth-btn" onclick="sendMagicLink()">Magic Link senden</button>
+    <div class="auth-msg" id="auth-msg"></div>
   </div>
-  <div class="header-btns">
-    <button class="btn-tab active" id="btn-series" onclick="switchTab('series')">SERIEN</button>
-    <button class="btn-tab" id="btn-movies" onclick="switchTab('movies')">FILME</button>
-    <button class="btn-reload" onclick="loadItems()" title="Neu laden">&#8635;</button>
-    <button class="btn-chat" id="btn-chat" onclick="toggleChat()">KI CHAT</button>
-  </div>
-</header>
+</div>
 
-<div class="layout">
-  <div class="main">
-    <div class="filters" id="filters">
-      <span class="filter-label">Filter:</span>
-      <button class="btn-filter" data-provider="8" onclick="toggleProvider(8)" style="border-color:#E50914">NF</button>
-      <button class="btn-filter" data-provider="119" onclick="toggleProvider(119)" style="border-color:#1A2A3E">AP</button>
-      <button class="btn-filter" data-provider="337" onclick="toggleProvider(337)" style="border-color:#1A2A3E">D+</button>
-      <button class="btn-filter" data-provider="350" onclick="toggleProvider(350)" style="border-color:#1A2A3E">ATV</button>
-      <button class="btn-filter" data-provider="39" onclick="toggleProvider(39)" style="border-color:#1A2A3E">WOW</button>
-      <button class="btn-filter" data-provider="384" onclick="toggleProvider(384)" style="border-color:#1A2A3E">HBO</button>
-      <button class="btn-filter" data-provider="207" onclick="toggleProvider(207)" style="border-color:#1A2A3E">JN</button>
-      <div class="filter-sep"></div>
-      <button class="btn-filter" data-status="none" onclick="toggleStatus('none')">&#9675; Nicht gesehen</button>
-      <button class="btn-filter" data-status="watching" onclick="toggleStatus('watching')">&#9681; Angefangen</button>
-      <button class="btn-filter" data-status="done" onclick="toggleStatus('done')">&#9679; Gesehen</button>
-      <span class="count" id="count">0 Titel</span>
+<!-- App -->
+<div id="app">
+  <header>
+    <div class="header-top">
+      <div class="logo">Stream<span>Board</span></div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="toggleSearch()" id="search-btn">🔍</button>
+        <button class="icon-btn" onclick="signOut()">👤</button>
+      </div>
     </div>
-    <div id="error-box" class="error-box" style="display:none">
-      <span id="error-msg"></span>
-      <button class="btn-retry" onclick="loadItems()">Erneut versuchen</button>
+    <div class="status-tabs">
+      <div class="status-tab" data-tab="browse" onclick="switchTab('browse')">🎬 Entdecken</div>
+      <div class="status-tab" data-tab="want" onclick="switchTab('want')">🔖 Will ich sehen</div>
+      <div class="status-tab" data-tab="watching" onclick="switchTab('watching')">◑ Angefangen</div>
+      <div class="status-tab" data-tab="aborted" onclick="switchTab('aborted')">✕ Abgebrochen</div>
+      <div class="status-tab" data-tab="done" onclick="switchTab('done')">✅ Gesehen</div>
     </div>
-    <div id="loader" class="loader">
-      <div class="spinner"></div>
-      <div class="loader-msg" id="loader-msg">Lade Daten von TMDB...</div>
-    </div>
-    <div id="grid" class="grid" style="display:none"></div>
+  </header>
+
+  <div id="provider-bar" class="provider-scroll"></div>
+  <div id="search-bar" class="search-wrap" style="display:none">
+    <input class="search-input" id="search-input" placeholder="Serie oder Film suchen..." oninput="onSearch(this.value)">
   </div>
-  <div class="chat-panel" id="chat-panel" style="display:none">
-    <div class="chat-header">KI-Assistent</div>
+
+  <main id="main-content">
+    <div class="loader"><div class="spinner"></div><div class="loader-msg">Lade...</div></div>
+  </main>
+</div>
+
+<!-- Chat FAB -->
+<button class="chat-fab" id="chat-fab" onclick="toggleChat()" style="display:none">💬</button>
+
+<!-- Chat Panel -->
+<div class="chat-overlay" id="chat-overlay" style="display:none" onclick="if(event.target===this)toggleChat()">
+  <div class="chat-panel">
+    <div class="chat-handle"></div>
     <div class="chat-messages" id="chat-messages">
-      <div class="msg assistant"><div class="msg-bubble">Hey! Sag mir was du geguckt hast, z.B. "Hab Succession fertig" oder "Was laeuft auf Netflix?"</div></div>
+      <div class="msg assistant"><div class="msg-bubble">Hey! Sag mir was du geguckt hast oder frag mich nach Empfehlungen. z.B. "Hab Succession fertig" oder "Was laeuft auf Netflix?"</div></div>
     </div>
     <div class="chat-input-row">
-      <input class="chat-input" id="chat-input" placeholder="z.B. Hab Succession fertig" onkeydown="if(event.key==='Enter') sendChat()">
-      <button class="chat-send" id="chat-send" onclick="sendChat()">&#8594;</button>
+      <input class="chat-input" id="chat-input" placeholder="Nachricht..." onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" onclick="sendChat()">↑</button>
     </div>
   </div>
 </div>
 
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+
 <script>
+const SUPABASE_URL = "https://fmlinbvtvjacitrvetmb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_pVVXVBPplJqarZ_RYbcy0A_OgjXPHOz";
 const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZmJiZmZjN2FjYiIsIm5iZiI6MTc3ODQyNDczMy42NjUsInN1YiI6IjZhMDA5YjlkM2U5ODRiOTM2NmVjMjBhNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-dkvM50nAGc7oQjIqTfgDcGKV--lvti4DY2tRl7MHu0";
 const CLAUDE_API = "https://api.anthropic.com/v1/messages";
 
 const PROVIDERS = {
-  8:   { name: "Netflix",       color: "#E50914", short: "NF"  },
-  119: { name: "Amazon Prime",  color: "#00A8E0", short: "AP"  },
-  337: { name: "Disney+",       color: "#113CCF", short: "D+"  },
-  350: { name: "Apple TV+",     color: "#555",    short: "ATV" },
-  39:  { name: "WOW",           color: "#FF6B35", short: "WOW" },
-  384: { name: "HBO Max",       color: "#5822B4", short: "HBO" },
-  207: { name: "Joyn",          color: "#00C896", short: "JN"  },
+  8:   { name: "Netflix",      color: "#E50914", short: "NF"  },
+  119: { name: "Amazon Prime", color: "#00A8E0", short: "AP"  },
+  337: { name: "Disney+",      color: "#113CCF", short: "D+"  },
+  350: { name: "Apple TV+",    color: "#555",    short: "ATV" },
+  39:  { name: "WOW",          color: "#FF6B35", short: "WOW" },
+  384: { name: "HBO Max",      color: "#5822B4", short: "HBO" },
+  207: { name: "Joyn",         color: "#00C896", short: "JN"  },
 };
 
-const WATCH = {
-  none:     { label: "Nicht gesehen", icon: "&#9675;", color: "#555"    },
-  watching: { label: "Angefangen",    icon: "&#9681;", color: "#F5A623" },
-  done:     { label: "Gesehen",       icon: "&#9679;", color: "#4CAF50" },
+const STATUS_CONFIG = {
+  want:     { label: "Will ich sehen", icon: "🔖", color: "#a78bfa" },
+  watching: { label: "Angefangen",     icon: "◑",  color: "#f5a623" },
+  aborted:  { label: "Abgebrochen",    icon: "✕",  color: "#ef4444" },
+  done:     { label: "Gesehen",        icon: "✅",  color: "#22c55e" },
 };
 
-let activeTab      = "series";
-let allItems       = [];
-let watchStatus    = JSON.parse(localStorage.getItem("streamboard_status") || "{}");
-let filterProvider = null;
-let filterStatus   = null;
-let chatHistory    = [];
-let showChat       = false;
+// Initial data from user lists
+const INITIAL_DONE_SERIES = ["nine perfect strangers","rabbit hole","mobland","landman","elementary","frasier","king of queens","paris has fallen","silo","your friends and neighbours","daredevil born again","the residence","white lotus","high potentials","the day of the jackal","dark matters","aus mangel an beweisen","arcane","hacks","teheran","eine frage der chemie","drops of god","the gentleman","in ewiger schuld","fargo","mrs. & mr. smith","extraordinary","the peripheral","altered carbon","the diplomat","upload","somebody somewhere","line of duty","one piece","killing eve","der pass","heartstopper","succession","american born chinese","boston legal","good fight","fleishman is in trouble","citadel","severance","the night agent","the recruit","last of us","the consultant","the rehearsal","wednesday","vigil","she hulk","miss marvel","for life","resident alien","love victor","anatomie eines skandals","extra curricular","haus des geldes","my holo love","clickbait","welcome to earth","liebe und anarchie","humans","die professorin","sex education","tote madchen lugen nicht","kominsky method","elite","broadchurch","the fall","the team","die brucke","white collar","blacklist","suits","sherlock","good wife","stranger things","designated survivor","girlboss","riverdale","person of interest","berlin station","ozark","the killing","unbreakable kimmy schmidt","queen of the south","elementary","lie to me","the end of the fucking world","everything sucks","the rain","santa clarita diet","good girls","safe","deadwind","sick note","bodyguard","you","bad banks","the politician","living with yourself","goliath","homeland","jack ryan","sneaky pete","startup","hanna","deutschland 83","deutschland 86","beat","patriot","red oaks","lucifer","bosch","pastewka","fleabag","absentia","the bold type","marvelous mrs maisel","the undoing","westworld","riviera","new amsterdam","damages","3 body problem","john sugar","fallout","follow the money","red eye"];
 
-function saveStatus() {
-  localStorage.setItem("streamboard_status", JSON.stringify(watchStatus));
+const INITIAL_DONE_MOVIES = ["flight and fight","alter weisser mann","wo die luge hinfAllt","papillon","the order","roadhouse","barbie","oppenheimer","the gorge","the fall guy","monkey man","triangle of sadness","everything everywhere all at once","easy money","beverly hills cop axel f","eye in the sky","searching","mission impossible","inception","snatch","bullet train","nobody","extraction","the gray man","john wick","tenet","looper","gone girl","knives out","nightcrawler","the adam project","don't look up","red notice","triple frontier","saltburn","palm springs","wolfs","the menu","dune","glass onion","django unchained","salt","ambulance","extraction 2","leave the world behind","benjamin button","the peanut butter falcon"];
+
+const INITIAL_WATCHING = ["your friends and neighbours","one day","daredevil born again","veep","the lincoln lawyer","loki","physical","true detective","billions","shrinking","bodies","ted lasso","atypical","dickinson","slow horses","only murders in the building","shogun","for all mankind","the bear","beef","formula one drive to survive","cobra kai","ghosts","the staircase","industry","the franchise","bad sisters","cha cha real smooth","severance","silo","weak hero class","forecasting love and weather","trauma","ein neuer sommer"];
+
+const INITIAL_WANT = ["the studio","dope thief","mad max fury road","sonne und beton","lady bird","ripley","arrival","poor things","split","justified","fair play","undercover","ferry die serie","babylon","le mans 66","reptile","the card counter","memories of a murder","the wire","peaky blinders","foundation","beef","the night comes for us","snowpiercer","the outlaws","pachinko","mare of easttown","gangubai kathiawadi","daisy jones and the six","ferrari","the bear","ted lasso","bad sisters","for all mankind","severance","kaos","ginny and georgia"];
+
+const SUNDAY_LIST = ["als du mich sahst","zwei an einem tag"];
+
+let sb, currentUser, currentTab = "browse", currentProvider = null;
+let allItems = [], userStatuses = {}, seasonStatuses = {}, searchTimeout;
+let showSearch = false, showChat = false, chatHistory = [];
+
+// Init Supabase
+sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    showApp();
+  }
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session && !currentUser) {
+      currentUser = session.user;
+      showApp();
+    }
+  });
 }
 
-function cycleStatus(key) {
-  const order = ["none", "watching", "done"];
-  const cur = watchStatus[key] || "none";
-  watchStatus[key] = order[(order.indexOf(cur) + 1) % 3];
-  saveStatus();
-  renderGrid();
+async function sendMagicLink() {
+  const email = document.getElementById("auth-email").value.trim();
+  if (!email) return;
+  const msg = document.getElementById("auth-msg");
+  msg.textContent = "Sende Magic Link...";
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: "https://simyo88.github.io/Dashboard_streaming" }
+  });
+  if (error) { msg.textContent = "Fehler: " + error.message; }
+  else { msg.textContent = "Magic Link gesendet! Bitte checke deine E-Mails."; }
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+function showApp() {
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  document.getElementById("chat-fab").style.display = "flex";
+  renderProviderBar();
+  switchTab("browse");
+  loadUserStatuses();
+}
+
+function renderProviderBar() {
+  const bar = document.getElementById("provider-bar");
+  bar.innerHTML = '<div class="provider-pill' + (!currentProvider ? " active" : "") + '" style="' + (!currentProvider ? "background:var(--accent);color:#fff;border-color:var(--accent)" : "") + '" onclick="setProvider(null)">Alle</div>' +
+    Object.entries(PROVIDERS).map(([id, p]) => {
+      const active = currentProvider === +id;
+      return '<div class="provider-pill' + (active ? " active" : "") + '" style="' + (active ? "background:" + p.color + ";color:#fff;border-color:" + p.color : "") + '" onclick="setProvider(' + id + ')">' + p.short + '</div>';
+    }).join("");
+}
+
+function setProvider(id) {
+  currentProvider = id;
+  renderProviderBar();
+  if (currentTab === "browse") loadBrowse();
+}
+
+async function loadUserStatuses() {
+  if (!currentUser) return;
+  const { data } = await sb.from("watch_status").select("*").eq("user_id", currentUser.id);
+  if (data) data.forEach(r => { userStatuses[r.title_id] = r.status; });
+  const { data: sd } = await sb.from("season_status").select("*").eq("user_id", currentUser.id);
+  if (sd) sd.forEach(r => { if (!seasonStatuses[r.title_id]) seasonStatuses[r.title_id] = {}; seasonStatuses[r.title_id][r.season_number] = r.status; });
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".status-tab").forEach(t => {
+    t.className = "status-tab";
+    if (t.dataset.tab === tab) t.className = "status-tab active-" + tab;
+  });
+  document.getElementById("provider-bar").style.display = tab === "browse" ? "flex" : "none";
+  if (tab === "browse") loadBrowse();
+  else loadMyList(tab);
 }
 
 async function tmdb(path) {
@@ -174,116 +338,229 @@ async function tmdb(path) {
   return r.json();
 }
 
-async function loadItems() {
-  document.getElementById("loader").style.display = "flex";
-  document.getElementById("grid").style.display = "none";
-  document.getElementById("error-box").style.display = "none";
-  document.getElementById("loader-msg").textContent = "Lade Top-" + (activeTab === "series" ? "Serien" : "Filme") + " von TMDB...";
-  allItems = [];
-
+async function loadBrowse() {
+  setLoading("Lade Top-Titel...");
   try {
-    const type = activeTab === "series" ? "tv" : "movie";
-    const data = await tmdb("/" + type + "/top_rated?page=1");
-    const top12 = (data.results || []).slice(0, 12);
-
-    document.getElementById("loader-msg").textContent = "Lade Streaming-Anbieter...";
-    const enriched = await Promise.all(top12.map(async item => {
-      try {
-        const wp = await tmdb("/" + type + "/" + item.id + "/watch/providers");
-        const providers = (wp.results && wp.results.DE && wp.results.DE.flatrate)
-          ? wp.results.DE.flatrate.map(p => p.provider_id) : [];
-        return { ...item, providers, mediaType: activeTab };
-      } catch { return { ...item, providers: [], mediaType: activeTab }; }
-    }));
-
-    allItems = enriched;
-    document.getElementById("loader").style.display = "none";
-    document.getElementById("grid").style.display = "grid";
-    renderGrid();
+    const pid = currentProvider || 8;
+    const [tvData, movieData] = await Promise.all([
+      tmdb("/discover/tv?with_watch_providers=" + pid + "&watch_region=DE&sort_by=vote_average.desc&vote_count.gte=100&page=1"),
+      tmdb("/discover/movie?with_watch_providers=" + pid + "&watch_region=DE&sort_by=vote_average.desc&vote_count.gte=200&page=1")
+    ]);
+    const tvItems = (tvData.results || []).slice(0, 20).map(i => ({ ...i, mediaType: "series", title: i.name }));
+    const movieItems = (movieData.results || []).slice(0, 20).map(i => ({ ...i, mediaType: "movie" }));
+    allItems = [...tvItems, ...movieItems];
+    renderBrowse(tvItems, movieItems);
   } catch(e) {
-    document.getElementById("loader").style.display = "none";
-    document.getElementById("error-box").style.display = "flex";
-    document.getElementById("error-msg").textContent = "Fehler: " + e.message;
+    setError("Fehler beim Laden: " + e.message);
   }
 }
 
-function renderGrid() {
-  const filtered = allItems.filter(item => {
-    const key = item.mediaType + "-" + item.id;
-    const pm = !filterProvider || (item.providers || []).includes(filterProvider);
-    const sm = !filterStatus || (watchStatus[key] || "none") === filterStatus;
-    return pm && sm;
-  });
+function renderBrowse(tvItems, movieItems) {
+  const pname = currentProvider ? PROVIDERS[currentProvider].name : "Allen Anbietern";
+  let html = '<div class="section-header">Top Serien auf ' + pname + '</div>';
+  html += '<div class="grid">' + tvItems.map(item => cardHTML(item)).join("") + '</div>';
+  html += '<div class="section-header" style="margin-top:24px">Top Filme auf ' + pname + '</div>';
+  html += '<div class="grid">' + movieItems.map(item => cardHTML(item)).join("") + '</div>';
+  document.getElementById("main-content").innerHTML = html;
+}
 
-  document.getElementById("count").textContent = filtered.length + " Titel";
-  const grid = document.getElementById("grid");
-  grid.innerHTML = filtered.map(item => {
-    const key = item.mediaType + "-" + item.id;
-    const status = watchStatus[key] || "none";
-    const pct = Math.round((item.vote_average || 0) * 10);
-    const scoreColor = pct >= 75 ? "#4CAF50" : pct >= 50 ? "#F5A623" : "#E53935";
-    const title = item.name || item.title || "";
-    const poster = item.poster_path
-      ? '<img src="https://image.tmdb.org/t/p/w300' + item.poster_path + '" alt="' + title.replace(/"/g,"") + '" loading="lazy">'
-      : '<div class="poster-placeholder">🎬</div>';
-    const providerTags = (item.providers || [])
-      .filter(pid => PROVIDERS[pid])
-      .map(pid => '<span class="provider-tag" style="background:' + PROVIDERS[pid].color + '">' + PROVIDERS[pid].short + '</span>')
-      .join("") || '<span class="no-provider">kein DE-Stream</span>';
+function cardHTML(item) {
+  const key = item.mediaType + "-" + item.id;
+  const status = userStatuses[key] || "none";
+  const pct = Math.round((item.vote_average || 0) * 10);
+  const scoreColor = pct >= 75 ? "#22c55e" : pct >= 50 ? "#f5a623" : "#ef4444";
+  const title = item.title || item.name || "";
+  const year = (item.release_date || item.first_air_date || "").slice(0,4);
+  const seasons = item.number_of_seasons ? item.number_of_seasons + " Staffel" + (item.number_of_seasons > 1 ? "n" : "") : "";
+  const statusIcon = status !== "none" ? STATUS_CONFIG[status].icon : "";
+  const poster = item.poster_path
+    ? '<img src="https://image.tmdb.org/t/p/w300' + item.poster_path + '" alt="" loading="lazy">'
+    : '<div class="poster-placeholder">🎬</div>';
 
-    return '<div class="card">' +
-      '<div class="poster-wrap">' + poster +
-        '<div class="score-badge" style="color:' + scoreColor + ';border-color:' + scoreColor + '">' + pct + '%</div>' +
-        '<div class="status-icon" onclick="cycleStatus(\'' + key + '\')" title="Status wechseln">' + WATCH[status].icon + '</div>' +
+  return '<div class="card" onclick="openModal(' + JSON.stringify(JSON.stringify(item)).slice(1,-1) + ')">' +
+    '<div class="poster-wrap">' + poster +
+      '<div class="score-badge" style="color:' + scoreColor + '">★ ' + (item.vote_average || 0).toFixed(1) + '</div>' +
+      (statusIcon ? '<div class="status-dot">' + statusIcon + '</div>' : '') +
+    '</div>' +
+    '<div class="card-body">' +
+      '<div class="card-title">' + title + '</div>' +
+      '<div class="card-meta">' +
+        (year ? '<span class="card-year">' + year + '</span>' : '') +
+        (seasons ? '<span class="card-seasons">' + seasons + '</span>' : '') +
       '</div>' +
-      '<div class="card-body">' +
-        '<div class="card-title">' + title + '</div>' +
-        '<div class="provider-tags">' + providerTags + '</div>' +
-        '<div class="status-label" style="color:' + WATCH[status].color + '" onclick="cycleStatus(\'' + key + '\')">' +
-          WATCH[status].icon + ' ' + WATCH[status].label +
-        '</div>' +
-      '</div>' +
-    '</div>';
+    '</div>' +
+  '</div>';
+}
+
+async function loadMyList(status) {
+  setLoading("Lade deine Liste...");
+  const { data } = await sb.from("watch_status")
+    .select("*, titles(*)")
+    .eq("user_id", currentUser.id)
+    .eq("status", status);
+
+  if (!data || data.length === 0) {
+    const labels = { want: "Noch nichts auf der Watchlist", watching: "Keine angefangenen Titel", aborted: "Keine abgebrochenen Titel", done: "Noch nichts als gesehen markiert" };
+    document.getElementById("main-content").innerHTML = '<div class="empty-state"><div class="empty-icon">' + (STATUS_CONFIG[status] ? STATUS_CONFIG[status].icon : "📋") + '</div>' + (labels[status] || "") + '</div>';
+    return;
+  }
+
+  const items = data.map(r => ({ ...r.titles, mediaType: r.titles ? r.titles.media_type : "series" })).filter(i => i.id);
+  const label = STATUS_CONFIG[status] ? STATUS_CONFIG[status].label : status;
+  let html = '<div class="section-header">' + label + ' (' + items.length + ')</div>';
+  html += '<div class="grid">' + items.map(item => cardHTML(item)).join("") + '</div>';
+  document.getElementById("main-content").innerHTML = html;
+}
+
+async function openModal(itemJson) {
+  let item;
+  try { item = JSON.parse(itemJson); } catch { return; }
+  const key = item.mediaType + "-" + item.id;
+
+  // Fetch seasons if series
+  let seasons = [];
+  if (item.mediaType === "series" && item.id) {
+    try {
+      const d = await tmdb("/" + (item.mediaType === "series" ? "tv" : "movie") + "/" + item.id);
+      seasons = d.seasons ? d.seasons.filter(s => s.season_number > 0) : [];
+      item.number_of_seasons = d.number_of_seasons;
+      item.overview = d.overview || item.overview;
+    } catch {}
+  }
+
+  const status = userStatuses[key] || "none";
+  const title = item.title || item.name || "";
+  const poster = item.poster_path ? '<img src="https://image.tmdb.org/t/p/w300' + item.poster_path + '" alt="">' : '<div style="height:130px;background:rgba(0,0,0,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:32px">🎬</div>';
+
+  const statusBtns = Object.entries(STATUS_CONFIG).map(([s, cfg]) => {
+    const active = status === s;
+    return '<button class="modal-status-btn' + (active ? " active" : "") + '" style="' + (active ? "background:" + cfg.color + ";border-color:" + cfg.color : "") + '" onclick="setStatus(\'' + key + '\',\'' + s + '\',\'' + item.mediaType + '\',' + item.id + ')">' + cfg.icon + ' ' + cfg.label + '</button>';
   }).join("");
+
+  let seasonHtml = "";
+  if (seasons.length > 0) {
+    seasonHtml = '<div class="seasons-title">Staffeln</div>';
+    seasons.forEach(s => {
+      const ss = (seasonStatuses[key] && seasonStatuses[key][s.season_number]) || "none";
+      seasonHtml += '<div class="season-row">' +
+        '<div class="season-label">Staffel ' + s.season_number + (s.episode_count ? ' <span style="color:var(--text-muted);font-weight:400;font-size:11px">(' + s.episode_count + ' Eps.)</span>' : '') + '</div>' +
+        '<div class="season-btns">' +
+          Object.entries(STATUS_CONFIG).map(([sv, cfg]) =>
+            '<button class="season-btn' + (ss === sv ? " active" : "") + '" style="' + (ss === sv ? "background:" + cfg.color + ";border-color:" + cfg.color : "") + '" onclick="setSeasonStatus(\'' + key + '\',' + s.season_number + ',\'' + sv + '\')">' + cfg.icon + '</button>'
+          ).join("") +
+        '</div>' +
+      '</div>';
+    });
+  }
+
+  document.getElementById("modal-content").innerHTML =
+    '<div class="modal-handle"></div>' +
+    '<div class="modal-poster-row">' +
+      '<div class="modal-poster">' + poster + '</div>' +
+      '<div class="modal-info"><div class="modal-title">' + title + '</div>' +
+        (item.overview ? '<div class="modal-overview">' + item.overview.slice(0,200) + (item.overview.length > 200 ? '...' : '') + '</div>' : '') +
+      '</div>' +
+    '</div>' +
+    '<div class="modal-status-btns">' + statusBtns + '</div>' +
+    seasonHtml;
+
+  document.getElementById("modal-overlay").style.display = "flex";
 }
 
-function switchTab(tab) {
-  if (tab === activeTab) return;
-  activeTab = tab;
-  filterProvider = null;
-  filterStatus = null;
-  document.getElementById("btn-series").className = "btn-tab" + (tab === "series" ? " active" : "");
-  document.getElementById("btn-movies").className = "btn-tab" + (tab === "movies" ? " active" : "");
-  document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
-  loadItems();
+function closeModal() {
+  document.getElementById("modal-overlay").style.display = "none";
 }
 
-function toggleProvider(id) {
-  filterProvider = filterProvider === id ? null : id;
-  document.querySelectorAll("[data-provider]").forEach(b => {
-    const pid = parseInt(b.dataset.provider);
-    b.classList.toggle("active", pid === filterProvider);
-    if (PROVIDERS[pid]) b.style.background = (pid === filterProvider) ? PROVIDERS[pid].color : "transparent";
+async function setStatus(key, status, mediaType, tmdbId) {
+  userStatuses[key] = status;
+  // Upsert in supabase titles + watch_status
+  const parts = key.split("-");
+  const titleId = key;
+
+  // First ensure title exists
+  await sb.from("titles").upsert({ id: titleId, tmdb_id: tmdbId, media_type: mediaType, title: key }, { onConflict: "id" });
+  await sb.from("watch_status").upsert({ title_id: titleId, user_id: currentUser.id, status, updated_at: new Date().toISOString() }, { onConflict: "title_id,user_id" });
+
+  // Re-render modal status buttons
+  document.querySelectorAll(".modal-status-btn").forEach(btn => {
+    const s = btn.getAttribute("onclick").match(/'([^']+)','([^']+)'/)[2];
+    const cfg = STATUS_CONFIG[s];
+    const active = s === status;
+    btn.className = "modal-status-btn" + (active ? " active" : "");
+    btn.style.cssText = active ? "background:" + cfg.color + ";border-color:" + cfg.color + ";color:#fff" : "";
   });
-  renderGrid();
+
+  // Update card in grid
+  document.querySelectorAll(".card").forEach(card => {
+    if (card.getAttribute("onclick") && card.getAttribute("onclick").includes('"id":' + tmdbId)) {
+      const dot = card.querySelector(".status-dot");
+      if (status !== "none") {
+        if (dot) dot.innerHTML = STATUS_CONFIG[status].icon;
+        else {
+          const pw = card.querySelector(".poster-wrap");
+          const d = document.createElement("div");
+          d.className = "status-dot";
+          d.innerHTML = STATUS_CONFIG[status].icon;
+          pw.appendChild(d);
+        }
+      } else if (dot) dot.remove();
+    }
+  });
 }
 
-function toggleStatus(s) {
-  filterStatus = filterStatus === s ? null : s;
-  document.querySelectorAll("[data-status]").forEach(b => {
-    b.classList.toggle("active", b.dataset.status === filterStatus);
-    b.style.background = b.dataset.status === filterStatus ? "rgba(123,97,255,0.15)" : "transparent";
+async function setSeasonStatus(titleId, seasonNum, status) {
+  if (!seasonStatuses[titleId]) seasonStatuses[titleId] = {};
+  seasonStatuses[titleId][seasonNum] = status;
+  await sb.from("season_status").upsert({ title_id: titleId, user_id: currentUser.id, season_number: seasonNum, status, updated_at: new Date().toISOString() }, { onConflict: "title_id,user_id,season_number" });
+
+  // Update button in modal
+  document.querySelectorAll(".season-row").forEach(row => {
+    if (row.querySelector(".season-label") && row.querySelector(".season-label").textContent.includes("Staffel " + seasonNum)) {
+      row.querySelectorAll(".season-btn").forEach(btn => {
+        const sv = btn.getAttribute("onclick").match(/'([^']+)'\)$/)[1];
+        const cfg = STATUS_CONFIG[sv];
+        const active = sv === status;
+        btn.className = "season-btn" + (active ? " active" : "");
+        btn.style.cssText = active ? "background:" + cfg.color + ";border-color:" + cfg.color + ";color:#fff" : "";
+      });
+    }
   });
-  renderGrid();
+}
+
+function toggleSearch() {
+  showSearch = !showSearch;
+  document.getElementById("search-bar").style.display = showSearch ? "block" : "none";
+  if (showSearch) document.getElementById("search-input").focus();
+}
+
+function onSearch(val) {
+  clearTimeout(searchTimeout);
+  if (!val.trim()) { switchTab(currentTab); return; }
+  searchTimeout = setTimeout(() => searchTMDB(val), 500);
+}
+
+async function searchTMDB(query) {
+  setLoading("Suche...");
+  try {
+    const data = await tmdb("/search/multi?query=" + encodeURIComponent(query) + "&page=1");
+    const results = (data.results || []).filter(r => r.media_type === "tv" || r.media_type === "movie").map(r => ({
+      ...r, mediaType: r.media_type === "tv" ? "series" : "movie", title: r.name || r.title
+    }));
+    if (results.length === 0) {
+      document.getElementById("main-content").innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div>Keine Ergebnisse fuer "' + query + '"</div>';
+      return;
+    }
+    let html = '<div class="section-header">Suchergebnisse</div><div class="grid">' + results.map(item => cardHTML(item)).join("") + '</div>';
+    document.getElementById("main-content").innerHTML = html;
+  } catch(e) { setError("Suchfehler: " + e.message); }
 }
 
 function toggleChat() {
   showChat = !showChat;
-  document.getElementById("chat-panel").style.display = showChat ? "flex" : "none";
-  document.getElementById("btn-chat").className = "btn-chat" + (showChat ? " active" : "");
+  document.getElementById("chat-overlay").style.display = showChat ? "flex" : "none";
 }
 
-function addMessage(role, text) {
+function addChatMsg(role, text) {
   const box = document.getElementById("chat-messages");
   const div = document.createElement("div");
   div.className = "msg " + role;
@@ -297,60 +574,57 @@ async function sendChat() {
   const msg = input.value.trim();
   if (!msg) return;
   input.value = "";
-  addMessage("user", msg);
+  addChatMsg("user", msg);
   chatHistory.push({ role: "user", content: msg });
-  document.getElementById("chat-send").disabled = true;
 
   const thinking = document.createElement("div");
-  thinking.className = "chat-thinking";
-  thinking.textContent = "denke nach...";
+  thinking.className = "msg assistant";
+  thinking.innerHTML = '<div class="msg-bubble">...</div>';
   document.getElementById("chat-messages").appendChild(thinking);
 
-  const itemsSummary = allItems.map(i => ({
-    id: i.mediaType + "-" + i.id,
-    title: i.name || i.title,
-    providers: (i.providers || []).map(p => PROVIDERS[p] ? PROVIDERS[p].name : null).filter(Boolean),
-    status: watchStatus[i.mediaType + "-" + i.id] || "none",
-  }));
-
-  const system = "Du bist Assistent fuer ein Streaming-Dashboard.\n" +
-    "Status-Werte: none, watching, done\n" +
-    "Wenn Status geaendert werden soll, schreibe am Ende exakt:\n" +
-    "<status_update>{\"id\": \"series-123\", \"status\": \"done\"}</status_update>\n\n" +
-    "Dashboard:\n" + JSON.stringify(itemsSummary) + "\n\nAntworte auf Deutsch, kurz und freundlich.";
+  const summary = Object.entries(userStatuses).slice(0,50).map(([id, s]) => id + ":" + s).join(", ");
+  const system = "Du bist Assistent fuer ein Streaming-Dashboard. Status-Werte: want, watching, aborted, done. Wenn Status geaendert: <status_update>{\"id\":\"series-123\",\"status\":\"done\"}</status_update>. Aktuelle Status: " + summary + ". Antworte auf Deutsch, kurz.";
 
   try {
     const res = await fetch(CLAUDE_API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 800, system, messages: chatHistory })
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system, messages: chatHistory })
     });
     const data = await res.json();
     const fullText = (data.content && data.content[0] && data.content[0].text) || "Keine Antwort.";
-
     const regex = /<status_update>([\s\S]*?)<\/status_update>/g;
     let match;
     while ((match = regex.exec(fullText)) !== null) {
       try {
         const u = JSON.parse(match[1].trim());
-        if (u.id && u.status) watchStatus[u.id] = u.status;
+        if (u.id && u.status) {
+          const parts = u.id.split("-");
+          const tmdbId = parseInt(parts[parts.length-1]);
+          const mType = u.id.startsWith("movie") ? "movie" : "series";
+          await setStatus(u.id, u.status, mType, tmdbId);
+        }
       } catch {}
     }
-    saveStatus();
-    renderGrid();
-
     const clean = fullText.replace(/<status_update>[\s\S]*?<\/status_update>/g, "").trim();
     chatHistory.push({ role: "assistant", content: clean });
     thinking.remove();
-    addMessage("assistant", clean);
+    addChatMsg("assistant", clean);
   } catch(e) {
     thinking.remove();
-    addMessage("assistant", "Verbindungsfehler: " + e.message);
+    addChatMsg("assistant", "Verbindungsfehler.");
   }
-  document.getElementById("chat-send").disabled = false;
 }
 
-loadItems();
+function setLoading(msg) {
+  document.getElementById("main-content").innerHTML = '<div class="loader"><div class="spinner"></div><div class="loader-msg">' + msg + '</div></div>';
+}
+
+function setError(msg) {
+  document.getElementById("main-content").innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div>' + msg + '<br><br><button onclick="switchTab(currentTab)" style="padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;cursor:pointer;font-size:14px">Erneut versuchen</button></div>';
+}
+
+init();
 </script>
 </body>
 </html>
