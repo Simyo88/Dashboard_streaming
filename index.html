@@ -1,21 +1,537 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>JustWatch Test</title></head>
-<body style="font-family:sans-serif;padding:24px;background:#f0f4f8">
-<h2>JustWatch Provider Test</h2>
-<button onclick="runTest()" style="padding:12px 24px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer">Test starten</button>
-<pre id="result" style="margin-top:24px;background:#fff;padding:20px;border-radius:8px;font-size:14px"></pre>
-<script>
-async function runTest() {
-  document.getElementById("result").textContent = "Teste...";
-  try {
-    const res = await fetch("/.netlify/functions/test-providers");
-    const data = await res.json();
-    document.getElementById("result").textContent = JSON.stringify(data, null, 2);
-  } catch(e) {
-    document.getElementById("result").textContent = "Fehler: " + e.message;
-  }
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>StreamBoard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --glass: rgba(255,255,255,0.6);
+  --glass-border: rgba(255,255,255,0.85);
+  --glass-shadow: rgba(100,120,160,0.12);
+  --text: #1a2340;
+  --text-muted: #6b7a99;
+  --accent: #5b6ef5;
+  --card-radius: 16px;
+  --pill: 50px;
+  --want: #a78bfa;
+  --watching: #f5a623;
+  --aborted: #ef4444;
+  --done: #22c55e;
 }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: linear-gradient(135deg, #dce6f5 0%, #e8eef7 50%, #d5e4f0 100%); min-height: 100vh; color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif; }
+
+header { position: sticky; top: 0; z-index: 200; background: rgba(232,238,247,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.6); padding: 12px 16px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.logo { font-size: 22px; font-weight: 700; }
+.logo span { color: var(--accent); }
+.icon-btn { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 12px; padding: 8px 12px; font-size: 16px; cursor: pointer; color: var(--text); }
+
+.status-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.status-tabs::-webkit-scrollbar { display: none; }
+.stab { flex-shrink: 0; padding: 7px 14px; border-radius: var(--pill); border: 1.5px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.5); color: var(--text-muted); white-space: nowrap; transition: all 0.2s; }
+
+.provider-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 10px 16px 4px; }
+.provider-bar::-webkit-scrollbar { display: none; }
+.ppill { flex-shrink: 0; padding: 7px 14px; border-radius: var(--pill); border: 1.5px solid rgba(255,255,255,0.7); background: rgba(255,255,255,0.5); font-size: 12px; font-weight: 700; cursor: pointer; color: var(--text-muted); transition: all 0.2s; white-space: nowrap; }
+
+.type-bar { display: flex; gap: 6px; padding: 4px 16px 8px; }
+.typebtn { padding: 5px 14px; border-radius: var(--pill); border: 1.5px solid rgba(255,255,255,0.7); background: rgba(255,255,255,0.5); font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
+.typebtn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.search-wrap { padding: 6px 16px 10px; }
+.search-input { width: 100%; padding: 11px 18px; border-radius: var(--pill); border: 1.5px solid rgba(255,255,255,0.8); background: rgba(255,255,255,0.75); font-size: 15px; color: var(--text); outline: none; }
+
+main { padding: 12px 16px 100px; }
+.section-title { font-size: 17px; font-weight: 700; margin: 14px 0 10px; }
+
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (min-width: 480px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 680px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 900px) { .grid { grid-template-columns: repeat(5, 1fr); } }
+@media (min-width: 1100px) { .grid { grid-template-columns: repeat(6, 1fr); } }
+
+.card { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: var(--card-radius); overflow: hidden; box-shadow: 0 4px 18px var(--glass-shadow); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+.card:active { transform: scale(0.97); }
+@media (hover: hover) { .card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px var(--glass-shadow); } }
+.poster { position: relative; padding-top: 150%; background: rgba(200,210,230,0.4); overflow: hidden; }
+.poster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.poster-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+.score { position: absolute; top: 7px; right: 7px; background: rgba(255,255,255,0.92); border-radius: 8px; padding: 3px 7px; font-size: 11px; font-weight: 700; }
+.status-dot { position: absolute; top: 7px; left: 7px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; background: rgba(255,255,255,0.92); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.card-body { padding: 9px 10px 10px; }
+.card-title { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.35; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-meta { font-size: 10px; color: var(--text-muted); margin-bottom: 5px; }
+.card-providers { display: flex; gap: 3px; flex-wrap: wrap; }
+.cprov { border-radius: 4px; padding: 2px 5px; font-size: 8px; color: #fff; font-weight: 800; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(20,30,60,0.35); backdrop-filter: blur(8px); z-index: 500; display: flex; align-items: flex-end; justify-content: center; }
+@media (min-width: 600px) { .modal-overlay { align-items: center; } }
+.modal { background: linear-gradient(160deg, #eef3ff, #e8eef7); border-radius: 24px 24px 0 0; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 20px; }
+@media (min-width: 600px) { .modal { border-radius: 24px; } }
+.modal-handle { width: 36px; height: 4px; background: rgba(0,0,0,0.12); border-radius: 2px; margin: 0 auto 18px; }
+.modal-row { display: flex; gap: 14px; margin-bottom: 16px; }
+.modal-poster { width: 85px; flex-shrink: 0; border-radius: 12px; overflow: hidden; }
+.modal-poster img { width: 100%; display: block; }
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 5px; }
+.modal-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+.modal-overview { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.status-btns { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
+.sbtn { padding: 8px 14px; border-radius: var(--pill); border: 2px solid rgba(0,0,0,0.08); font-size: 12px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.6); color: var(--text-muted); transition: all 0.15s; }
+.sbtn.active { color: #fff; border-color: transparent; }
+.seasons-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.season-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 13px; background: rgba(255,255,255,0.65); border-radius: 12px; margin-bottom: 7px; }
+.season-label { font-size: 13px; font-weight: 600; }
+.season-btns { display: flex; gap: 5px; }
+.season-btn { padding: 5px 10px; border-radius: var(--pill); border: 1.5px solid rgba(0,0,0,0.08); font-size: 11px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.6); color: var(--text-muted); transition: all 0.15s; }
+.season-btn.active { color: #fff; }
+
+.chat-fab { position: fixed; bottom: 22px; right: 18px; width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 22px; border: none; cursor: pointer; box-shadow: 0 4px 18px rgba(91,110,245,0.35); z-index: 300; display: flex; align-items: center; justify-content: center; }
+.chat-overlay { position: fixed; inset: 0; z-index: 400; display: none; align-items: flex-end; justify-content: center; background: rgba(20,30,60,0.25); backdrop-filter: blur(5px); }
+.chat-panel { background: linear-gradient(160deg, #eef3ff, #e8eef7); border-radius: 24px 24px 0 0; width: 100%; max-width: 560px; height: 68vh; display: flex; flex-direction: column; padding: 14px; }
+.chat-handle { width: 36px; height: 4px; background: rgba(0,0,0,0.12); border-radius: 2px; margin: 0 auto 12px; }
+.chat-msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; }
+.msg { display: flex; }
+.msg.user { justify-content: flex-end; }
+.bubble { max-width: 86%; border-radius: 16px; padding: 9px 13px; font-size: 14px; line-height: 1.5; }
+.msg.user .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.msg.assistant .bubble { background: rgba(255,255,255,0.82); color: var(--text); border-bottom-left-radius: 4px; }
+.chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.chat-input { flex: 1; padding: 11px 15px; border-radius: var(--pill); border: 1.5px solid rgba(255,255,255,0.8); background: rgba(255,255,255,0.8); font-size: 15px; color: var(--text); outline: none; }
+.chat-send { background: var(--accent); border: none; border-radius: 50%; width: 42px; height: 42px; color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+
+.loader { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; gap: 14px; }
+.spinner { width: 34px; height: 34px; border: 3px solid rgba(91,110,245,0.2); border-top: 3px solid var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-msg { font-size: 13px; color: var(--text-muted); }
+.empty { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+.empty-icon { font-size: 44px; margin-bottom: 10px; }
+
+.load-more { display: block; width: 100%; max-width: 300px; margin: 20px auto 0; padding: 12px; background: var(--glass); border: 1.5px solid var(--glass-border); border-radius: var(--pill); font-size: 14px; font-weight: 600; color: var(--accent); cursor: pointer; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="logo">Stream<span>Board</span></div>
+    <div style="display:flex;gap:8px">
+      <button class="icon-btn" id="search-btn">&#128269;</button>
+    </div>
+  </div>
+  <div class="status-tabs" id="status-tabs">
+    <div class="stab" data-tab="browse">&#127916; Entdecken</div>
+    <div class="stab" data-tab="want">&#128278; Will ich sehen</div>
+    <div class="stab" data-tab="watching">&#9681; Angefangen</div>
+    <div class="stab" data-tab="aborted">&#10005; Abgebrochen</div>
+    <div class="stab" data-tab="done">&#9989; Gesehen</div>
+  </div>
+</header>
+
+<div id="provider-bar" class="provider-bar" style="display:none"></div>
+<div id="type-bar" class="type-bar" style="display:none">
+  <button class="typebtn active" data-type="all">Alle</button>
+  <button class="typebtn" data-type="series">Serien</button>
+  <button class="typebtn" data-type="movie">Filme</button>
+</div>
+<div id="search-bar" class="search-wrap" style="display:none">
+  <input class="search-input" id="search-input" placeholder="Titel suchen...">
+</div>
+<main id="main"></main>
+
+<button class="chat-fab" id="chat-fab">&#128172;</button>
+<div class="chat-overlay" id="chat-overlay">
+  <div class="chat-panel">
+    <div class="chat-handle"></div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="msg assistant"><div class="bubble">Hey! Sag mir was du geguckt hast oder frag nach Empfehlungen. z.B. "Hab Succession fertig" oder "Was laeuft auf WOW?"</div></div>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chat-input" placeholder="Nachricht...">
+      <button class="chat-send" id="chat-send">&#8593;</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" style="display:none">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+var SUPABASE_URL = "https://fmlinbvtvjacitrvetmb.supabase.co";
+var SUPABASE_KEY = "sb_publishable_pVVXVBPplJqarZ_RYbcy0A_OgjXPHOz";
+var CLAUDE_API = "https://api.anthropic.com/v1/messages";
+var API = "/.netlify/functions/justwatch";
+
+var PROVIDERS = [
+  { slug:"nfx", name:"Netflix",      color:"#E50914" },
+  { slug:"amp", name:"Amazon Prime", color:"#00A8E0" },
+  { slug:"dnp", name:"Disney+",      color:"#113CCF" },
+  { slug:"atp", name:"Apple TV+",    color:"#1C1C1E" },
+  { slug:"sko", name:"WOW",          color:"#FF6B35" },
+  { slug:"mxx", name:"HBO Max",      color:"#5822B4" },
+  { slug:"tvn", name:"RTL+",         color:"#E4002B" },
+  { slug:"jyn", name:"Joyn",         color:"#00C896" }
+];
+
+var STATUS = {
+  want:     { label:"Will ich sehen", icon:"&#128278;", color:"#a78bfa" },
+  watching: { label:"Angefangen",     icon:"&#9681;",   color:"#f5a623" },
+  aborted:  { label:"Abgebrochen",    icon:"&#10005;",  color:"#ef4444" },
+  done:     { label:"Gesehen",        icon:"&#9989;",   color:"#22c55e" }
+};
+
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var currentTab = "browse";
+var currentSlug = "nfx";
+var currentType = "all";
+var userStatuses = {};
+var seasonStatuses = {};
+var itemStore = {};
+var chatHistory = [];
+var searchTimer;
+
+function api(params) {
+  var qs = Object.keys(params).map(k => k + "=" + encodeURIComponent(params[k])).join("&");
+  return fetch(API + "?" + qs).then(r => r.json());
+}
+
+function setLoading(msg) {
+  document.getElementById("main").innerHTML = "<div class=\"loader\"><div class=\"spinner\"></div><div class=\"loader-msg\">" + (msg||"Laden...") + "</div></div>";
+}
+
+function setEmpty(icon, msg) {
+  document.getElementById("main").innerHTML = "<div class=\"empty\"><div class=\"empty-icon\">" + icon + "</div>" + msg + "</div>";
+}
+
+function scoreColor(s) {
+  return s >= 7 ? "#22c55e" : s >= 5 ? "#f5a623" : "#ef4444";
+}
+
+function cardHTML(item) {
+  var key = item.type + "-" + item.id;
+  var status = userStatuses[key] || "none";
+  var sk = key + "-" + Math.random().toString(36).slice(2);
+  itemStore[sk] = item;
+  var score = item.imdbScore || item.tmdbScore;
+  var scoreStr = score ? score.toFixed(1) : "";
+  var poster = item.poster
+    ? "<img src=\"" + item.poster + "\" alt=\"\" loading=\"lazy\">"
+    : "<div class=\"poster-placeholder\">&#127916;</div>";
+  var statusIcon = status !== "none" && STATUS[status] ? STATUS[status].icon : "";
+  var seasons = item.seasons && item.seasons.length ? item.seasons.length + " Staffel" + (item.seasons.length > 1 ? "n" : "") : "";
+  var provTags = item.providers.slice(0,3).map(p => {
+    var prov = PROVIDERS.find(x => x.slug === p.slug);
+    var col = prov ? prov.color : "#888";
+    return "<span class=\"cprov\" style=\"background:" + col + "\">" + p.name + "</span>";
+  }).join("");
+
+  var html = "<div class=\"card\" data-sk=\"" + sk + "\">";
+  html += "<div class=\"poster\">" + poster;
+  if (scoreStr) html += "<div class=\"score\" style=\"color:" + scoreColor(score) + "\">&#9733; " + scoreStr + "</div>";
+  if (statusIcon) html += "<div class=\"status-dot\">" + statusIcon + "</div>";
+  html += "</div>";
+  html += "<div class=\"card-body\">";
+  html += "<div class=\"card-title\">" + item.title + "</div>";
+  html += "<div class=\"card-meta\">" + (item.year || "") + (seasons ? " &bull; " + seasons : "") + "</div>";
+  if (provTags) html += "<div class=\"card-providers\">" + provTags + "</div>";
+  html += "</div></div>";
+  return html;
+}
+
+function attachCards() {
+  document.querySelectorAll(".card").forEach(function(card) {
+    card.addEventListener("click", function() {
+      var item = itemStore[this.getAttribute("data-sk")];
+      if (item) openModal(item);
+    });
+  });
+}
+
+function renderGrid(items, title) {
+  if (!items || !items.length) { setEmpty("&#128269;", "Keine Ergebnisse"); return; }
+  var html = "";
+  if (title) html += "<div class=\"section-title\">" + title + "</div>";
+  html += "<div class=\"grid\">" + items.map(cardHTML).join("") + "</div>";
+  document.getElementById("main").innerHTML = html;
+  attachCards();
+}
+
+function renderProviderBar() {
+  var bar = document.getElementById("provider-bar");
+  var html = PROVIDERS.map(p => {
+    var active = p.slug === currentSlug;
+    return "<div class=\"ppill\" data-slug=\"" + p.slug + "\" style=\"" + (active ? "background:" + p.color + ";color:#fff;border-color:" + p.color : "") + "\">" + p.name + "</div>";
+  }).join("");
+  bar.innerHTML = html;
+  bar.querySelectorAll(".ppill").forEach(function(pill) {
+    pill.addEventListener("click", function() {
+      currentSlug = this.getAttribute("data-slug");
+      renderProviderBar();
+      loadBrowse();
+    });
+  });
+}
+
+function loadBrowse() {
+  setLoading("Lade " + (PROVIDERS.find(p => p.slug === currentSlug) || {name:"Titel"}).name + "...");
+  api({ action:"popular", slug: currentSlug, type: currentType }).then(function(data) {
+    var items = data.items || [];
+    var prov = PROVIDERS.find(p => p.slug === currentSlug);
+    renderGrid(items, (prov ? "Top auf " + prov.name : "Top Titel") + " (" + (data.total || items.length) + ")");
+  }).catch(function(e) { setEmpty("&#9888;&#65039;", "Fehler: " + e.message); });
+}
+
+function loadMyList(status) {
+  setLoading("Lade Liste...");
+  sb.from("watch_status").select("*, titles(*)").eq("status", status).then(function(r) {
+    var data = r.data || [];
+    if (!data.length) { setEmpty(STATUS[status].icon, STATUS[status].label + " ist leer"); return; }
+    var items = data.filter(r => r.titles).map(function(r) {
+      return Object.assign({}, r.titles, {
+        id: r.titles.tmdb_id || r.title_id,
+        type: r.titles.media_type || "series",
+        providers: [],
+        seasons: []
+      });
+    });
+    renderGrid(items, STATUS[status].label + " (" + items.length + ")");
+  });
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".stab").forEach(function(t) {
+    var colors = {browse:"var(--accent)", want:"var(--want)", watching:"var(--watching)", aborted:"var(--aborted)", done:"var(--done)"};
+    var active = t.getAttribute("data-tab") === tab;
+    t.style.background = active ? colors[tab] : "";
+    t.style.color = active ? "#fff" : "";
+    t.style.borderColor = active ? colors[tab] : "transparent";
+  });
+  document.getElementById("provider-bar").style.display = tab === "browse" ? "flex" : "none";
+  document.getElementById("type-bar").style.display = tab === "browse" ? "flex" : "none";
+  if (tab === "browse") loadBrowse();
+  else loadMyList(tab);
+}
+
+function openModal(item) {
+  var key = item.type + "-" + item.id;
+  var status = userStatuses[key] || "none";
+  var poster = item.poster
+    ? "<img src=\"" + item.poster + "\" alt=\"\">"
+    : "<div style=\"height:120px;background:rgba(0,0,0,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:32px\">&#127916;</div>";
+  var score = item.imdbScore || item.tmdbScore;
+  var meta = [item.year, score ? "&#9733; " + score.toFixed(1) : "", (item.genres||[]).join(", ")].filter(Boolean).join(" &bull; ");
+
+  var statusBtns = Object.keys(STATUS).map(function(s) {
+    var cfg = STATUS[s];
+    var active = status === s;
+    return "<button class=\"sbtn" + (active ? " active" : "") + "\" data-s=\"" + s + "\" style=\"" + (active ? "background:" + cfg.color : "") + "\">" + cfg.icon + " " + cfg.label + "</button>";
+  }).join("");
+
+  var seasonHtml = "";
+  if (item.seasons && item.seasons.length) {
+    seasonHtml += "<div class=\"seasons-title\">Staffeln</div>";
+    item.seasons.forEach(function(s) {
+      var ss = seasonStatuses[key] && seasonStatuses[key][s.number] ? seasonStatuses[key][s.number] : "none";
+      seasonHtml += "<div class=\"season-row\">";
+      seasonHtml += "<div class=\"season-label\">Staffel " + s.number + (s.episodes ? " <span style=\"font-weight:400;font-size:11px;color:var(--text-muted)\">(" + s.episodes + " Eps.)</span>" : "") + "</div>";
+      seasonHtml += "<div class=\"season-btns\">";
+      Object.keys(STATUS).forEach(function(sv) {
+        var cfg = STATUS[sv];
+        var active = ss === sv;
+        seasonHtml += "<button class=\"season-btn" + (active ? " active" : "") + "\" data-sn=\"" + s.number + "\" data-sv=\"" + sv + "\" style=\"" + (active ? "background:" + cfg.color + ";color:#fff;border-color:" + cfg.color : "") + "\">" + cfg.icon + "</button>";
+      });
+      seasonHtml += "</div></div>";
+    });
+  }
+
+  var html = "<div class=\"modal-handle\"></div>";
+  html += "<div class=\"modal-row\">";
+  html += "<div class=\"modal-poster\">" + poster + "</div>";
+  html += "<div><div class=\"modal-title\">" + item.title + "</div>";
+  html += "<div class=\"modal-meta\">" + meta + "</div>";
+  if (item.overview) html += "<div class=\"modal-overview\">" + item.overview.slice(0,200) + (item.overview.length > 200 ? "..." : "") + "</div>";
+  html += "</div></div>";
+  html += "<div class=\"status-btns\">" + statusBtns + "</div>";
+  html += seasonHtml;
+
+  document.getElementById("modal").innerHTML = html;
+  document.getElementById("modal-overlay").style.display = "flex";
+
+  document.querySelectorAll(".sbtn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var s = this.getAttribute("data-s");
+      setStatus(key, s, item);
+      document.querySelectorAll(".sbtn").forEach(function(b) {
+        var bs = b.getAttribute("data-s");
+        var active = bs === s;
+        b.className = "sbtn" + (active ? " active" : "");
+        b.style.background = active ? STATUS[bs].color : "";
+        b.style.color = active ? "#fff" : "";
+      });
+    });
+  });
+
+  document.querySelectorAll(".season-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var sn = parseInt(this.getAttribute("data-sn"));
+      var sv = this.getAttribute("data-sv");
+      setSeasonStatus(key, sn, sv);
+      var row = this.closest(".season-row");
+      row.querySelectorAll(".season-btn").forEach(function(b) {
+        var bsv = b.getAttribute("data-sv");
+        var active = bsv === sv;
+        b.className = "season-btn" + (active ? " active" : "");
+        b.style.background = active ? STATUS[bsv].color : "";
+        b.style.color = active ? "#fff" : "";
+        b.style.borderColor = active ? STATUS[bsv].color : "";
+      });
+    });
+  });
+}
+
+function setStatus(key, status, item) {
+  userStatuses[key] = status;
+  var parts = key.split("-");
+  var titleData = {
+    id: key,
+    tmdb_id: item.id,
+    media_type: item.type,
+    title: item.title,
+    poster_path: item.poster,
+    vote_average: item.imdbScore || item.tmdbScore,
+    overview: item.overview || null
+  };
+  sb.from("titles").upsert(titleData, {onConflict:"id"}).then(function() {
+    sb.from("watch_status").upsert({title_id: key, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id"});
+  });
+  document.querySelectorAll(".card").forEach(function(card) {
+    var sk = card.getAttribute("data-sk");
+    if (sk && itemStore[sk] && itemStore[sk].id == item.id) {
+      var dot = card.querySelector(".status-dot");
+      if (status !== "none") {
+        var icon = STATUS[status].icon;
+        if (dot) dot.innerHTML = icon;
+        else {
+          var d = document.createElement("div");
+          d.className = "status-dot";
+          d.innerHTML = icon;
+          card.querySelector(".poster").appendChild(d);
+        }
+      } else if (dot) dot.remove();
+    }
+  });
+}
+
+function setSeasonStatus(titleId, sn, status) {
+  if (!seasonStatuses[titleId]) seasonStatuses[titleId] = {};
+  seasonStatuses[titleId][sn] = status;
+  sb.from("season_status").upsert({title_id: titleId, season_number: sn, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id,season_number"});
+}
+
+function loadStatuses() {
+  sb.from("watch_status").select("*").then(function(r) {
+    (r.data||[]).forEach(function(row) { userStatuses[row.title_id] = row.status; });
+  });
+  sb.from("season_status").select("*").then(function(r) {
+    (r.data||[]).forEach(function(row) {
+      if (!seasonStatuses[row.title_id]) seasonStatuses[row.title_id] = {};
+      seasonStatuses[row.title_id][row.season_number] = row.status;
+    });
+  });
+}
+
+function addMsg(role, text) {
+  var box = document.getElementById("chat-msgs");
+  var d = document.createElement("div");
+  d.className = "msg " + role;
+  d.innerHTML = "<div class=\"bubble\">" + text + "</div>";
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function sendChat() {
+  var input = document.getElementById("chat-input");
+  var msg = input.value.trim();
+  if (!msg) return;
+  input.value = "";
+  addMsg("user", msg);
+  chatHistory.push({role:"user", content:msg});
+  var thinking = document.createElement("div");
+  thinking.className = "msg assistant";
+  thinking.innerHTML = "<div class=\"bubble\">...</div>";
+  document.getElementById("chat-msgs").appendChild(thinking);
+
+  var summary = Object.keys(userStatuses).slice(0,60).map(function(id) { return id + ":" + userStatuses[id]; }).join(", ");
+  var system = "Du bist Assistent fuer ein Streaming-Dashboard. Status: want, watching, aborted, done. Bei Statusaenderung antworte mit XML: <status_update>{id, status}</status_update>. Aktuelle Status: " + summary + ". Antworte auf Deutsch, kurz.";
+
+  fetch(CLAUDE_API, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-4-20250514", max_tokens:600, system:system, messages:chatHistory})
+  }).then(r => r.json()).then(function(data) {
+    var text = data.content && data.content[0] ? data.content[0].text : "Keine Antwort.";
+    var regex = /<status_update>([^<]+)<\/status_update>/g;
+    var match;
+    while ((match = regex.exec(text)) !== null) {
+      try {
+        var u = JSON.parse(match[1].trim());
+        if (u.id && u.status) userStatuses[u.id] = u.status;
+      } catch(e) {}
+    }
+    var clean = text.replace(/<status_update>[^<]+<\/status_update>/g, "").trim();
+    chatHistory.push({role:"assistant", content:clean});
+    thinking.remove();
+    addMsg("assistant", clean);
+  }).catch(function() { thinking.remove(); addMsg("assistant", "Verbindungsfehler."); });
+}
+
+// Events
+document.querySelectorAll(".stab").forEach(function(t) {
+  t.addEventListener("click", function() { switchTab(this.getAttribute("data-tab")); });
+});
+
+document.querySelectorAll(".typebtn").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    currentType = this.getAttribute("data-type");
+    document.querySelectorAll(".typebtn").forEach(function(b) { b.classList.remove("active"); });
+    this.classList.add("active");
+    if (currentTab === "browse") loadBrowse();
+  });
+});
+
+document.getElementById("search-btn").addEventListener("click", function() {
+  var bar = document.getElementById("search-bar");
+  bar.style.display = bar.style.display === "none" ? "block" : "none";
+  if (bar.style.display === "block") document.getElementById("search-input").focus();
+});
+
+document.getElementById("search-input").addEventListener("input", function() {
+  clearTimeout(searchTimer);
+  var val = this.value.trim();
+  if (!val) { switchTab(currentTab); return; }
+  searchTimer = setTimeout(function() {
+    setLoading("Suche...");
+    api({action:"search", query:val}).then(function(items) { renderGrid(items, "Suchergebnisse"); });
+  }, 500);
+});
+
+document.getElementById("chat-fab").addEventListener("click", function() {
+  var o = document.getElementById("chat-overlay");
+  o.style.display = o.style.display === "none" ? "flex" : "none";
+});
+document.getElementById("chat-overlay").addEventListener("click", function(e) { if (e.target===this) this.style.display="none"; });
+document.getElementById("chat-send").addEventListener("click", sendChat);
+document.getElementById("chat-input").addEventListener("keydown", function(e) { if (e.key==="Enter") sendChat(); });
+document.getElementById("modal-overlay").addEventListener("click", function(e) { if (e.target===this) this.style.display="none"; });
+
+// Init
+loadStatuses();
+renderProviderBar();
+switchTab("browse");
 </script>
 </body>
 </html>
