@@ -249,7 +249,7 @@ const SUNDAY_LIST = ["als du mich sahst","zwei an einem tag"];
 
 let sb, currentUser, currentTab = "browse", currentProvider = null;
 let allItems = [], userStatuses = {}, seasonStatuses = {}, searchTimeout;
-let showSearch = false, showChat = false, chatHistory = [];
+let showSearch = false, showChat = false, chatHistory = [], itemStore = {};
 
 // Init Supabase
 sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -377,7 +377,9 @@ function cardHTML(item) {
     ? '<img src="https://image.tmdb.org/t/p/w300' + item.poster_path + '" alt="" loading="lazy">'
     : '<div class="poster-placeholder">🎬</div>';
 
-  return '<div class="card" onclick="openModal(' + JSON.stringify(JSON.stringify(item)).slice(1,-1) + ')">' +
+  const storeKey = key + "-" + Date.now() + Math.random();
+  itemStore[storeKey] = item;
+  return '<div class="card" onclick="openModal(\'  + storeKey + '\)">'+
     '<div class="poster-wrap">' + poster +
       '<div class="score-badge" style="color:' + scoreColor + '">★ ' + (item.vote_average || 0).toFixed(1) + '</div>' +
       (statusIcon ? '<div class="status-dot">' + statusIcon + '</div>' : '') +
@@ -412,9 +414,9 @@ async function loadMyList(status) {
   document.getElementById("main-content").innerHTML = html;
 }
 
-async function openModal(itemJson) {
-  let item;
-  try { item = JSON.parse(itemJson); } catch { return; }
+async function openModal(storeKey) {
+  const item = itemStore[storeKey];
+  if (!item) return;
   const key = item.mediaType + "-" + item.id;
 
   // Fetch seasons if series
