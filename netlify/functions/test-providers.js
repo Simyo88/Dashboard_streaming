@@ -15,7 +15,7 @@ exports.handler = async function(event, context) {
   for (const provider of providers) {
     try {
       const query = `
-        query GetPopularTitles($country: Country!, $platform: [String!]!) {
+        query GetPopularTitles($country: Country!, $language: Language!, $platform: [String!]!) {
           popularTitles(
             country: $country
             filter: { packages: $platform }
@@ -24,7 +24,7 @@ exports.handler = async function(event, context) {
             totalCount
             edges {
               node {
-                content {
+                content(country: $country, language: $language) {
                   title
                 }
               }
@@ -41,7 +41,7 @@ exports.handler = async function(event, context) {
         },
         body: JSON.stringify({
           query,
-          variables: { country: "DE", platform: [provider.slug] }
+          variables: { country: "DE", language: "de", platform: [provider.slug] }
         })
       });
 
