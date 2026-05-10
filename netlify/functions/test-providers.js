@@ -26,7 +26,6 @@ exports.handler = async function(event, context) {
               node {
                 content {
                   title
-                  objectType
                 }
               }
             }
@@ -56,7 +55,7 @@ exports.handler = async function(event, context) {
         };
       } else {
         const text = await res.text();
-        results[provider.name] = { status: "HTTP " + res.status, body: text.slice(0, 200) };
+        results[provider.name] = { status: "HTTP " + res.status, body: text.slice(0, 300) };
       }
     } catch(e) {
       results[provider.name] = { status: "Fehler: " + e.message };
