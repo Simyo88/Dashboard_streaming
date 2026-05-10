@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamBoard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0A0A0F; color: #E8E8F0; font-family: Georgia, serif; min-height: 100vh; }
+  
+  header { position: sticky; top: 0; z-index: 100; background: rgba(10,10,15,0.97); border-bottom: 1px solid #1E1E2E; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(12px); }
+  .logo-sub { font-size: 10px; letter-spacing: 4px; color: #444; text-transform: uppercase; margin-bottom: 2px; }
+  .logo { font-size: 24px; font-weight: 300; color: #E8E8F0; }
+  .logo span { color: #7B61FF; }
+  
+  .header-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { font-family: Georgia, serif; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+  .btn-tab { background: transparent; border: 1px solid #2A2A3E; color: #777; padding: 7px 16px; font-size: 12px; letter-spacing: 1px; }
+  .btn-tab.active { background: #7B61FF; border-color: #7B61FF; color: #fff; }
+  .btn-chat { background: transparent; border: 1px solid #2A2A3E; color: #777; padding: 7px 16px; font-size: 12px; letter-spacing: 1px; }
+  .btn-chat.active { background: #FF6B35; border-color: #FF6B35; color: #fff; }
+  .btn-reload { background: transparent; border: 1px solid #2A2A3E; color: #777; padding: 7px 12px; font-size: 14px; }
+  
+  .layout { display: flex; min-height: calc(100vh - 65px); }
+  .main { flex: 1; padding: 24px 28px; }
+  
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 22px; }
+  .filter-label { font-size: 10px; color: #444; letter-spacing: 2px; text-transform: uppercase; margin-right: 4px; }
+  .btn-filter { background: transparent; border: 1px solid #252535; color: #555; padding: 4px 10px; font-size: 10px; font-family: Georgia, serif; }
+  .btn-filter.active { color: #fff; }
+  .filter-sep { width: 1px; height: 18px; background: #252535; margin: 0 2px; }
+  .count { margin-left: auto; font-size: 11px; color: #333; }
+  
+  .error-box { background: #160808; border: 1px solid #5A1A1A; border-radius: 6px; padding: 14px 18px; margin-bottom: 20px; color: #CC4444; font-size: 13px; display: flex; align-items: center; gap: 12px; }
+  .btn-retry { background: #7B61FF; border: none; color: #fff; padding: 5px 14px; font-size: 11px; font-family: Georgia, serif; border-radius: 3px; }
+  
+  .loader { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 16px; }
+  .spinner { width: 36px; height: 36px; border: 2px solid #1E1E2E; border-top: 2px solid #7B61FF; border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-msg { color: #444; font-size: 12px; letter-spacing: 2px; }
+  
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 16px; }
+  
+  .card { background: #0D0D1A; border: 1px solid #181828; border-radius: 6px; overflow: hidden; transition: all 0.2s; }
+  .card:hover { border-color: #7B61FF; transform: translateY(-2px); }
+  .poster-wrap { position: relative; padding-top: 150%; background: #090916; }
+  .poster-wrap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .poster-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+  .score-badge { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.88); border-radius: 3px; padding: 2px 6px; font-size: 11px; font-weight: bold; border: 1px solid; }
+  .status-icon { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.88); border-radius: 3px; padding: 2px 6px; font-size: 13px; cursor: pointer; }
+  .card-body { padding: 10px; }
+  .card-title { font-size: 12px; color: #C8C8D8; line-height: 1.35; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .provider-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 6px; }
+  .provider-tag { border-radius: 2px; padding: 2px 5px; font-size: 8px; color: #fff; font-weight: bold; }
+  .no-provider { font-size: 9px; color: #2A2A3A; }
+  .status-label { font-size: 9px; cursor: pointer; letter-spacing: 0.3px; }
+  
+  /* Chat */
+  .chat-panel { width: 310px; border-left: 1px solid #1A1A2A; display: flex; flex-direction: column; background: #0B0B15; position: sticky; top: 65px; height: calc(100vh - 65px); }
+  .chat-header { padding: 14px 16px; border-bottom: 1px solid #1A1A2A; font-size: 10px; letter-spacing: 2px; color: #444; text-transform: uppercase; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { display: flex; }
+  .msg.user { justify-content: flex-end; }
+  .msg-bubble { max-width: 88%; border-radius: 8px; padding: 9px 13px; font-size: 12px; line-height: 1.5; }
+  .msg.user .msg-bubble { background: #7B61FF; color: #fff; }
+  .msg.assistant .msg-bubble { background: #161626; color: #B8B8C8; }
+  .chat-thinking { color: #333; font-size: 11px; letter-spacing: 2px; padding: 4px 0; }
+  .chat-input-row { padding: 14px 16px; border-top: 1px solid #1A1A2A; display: flex; gap: 8px; }
+  .chat-input { flex: 1; background: #09090F; border: 1px solid #202030; border-radius: 4px; padding: 9px 12px; color: #E0E0F0; font-size: 12px; font-family: Georgia, serif; outline: none; }
+  .chat-send { background: #7B61FF; border: none; border-radius: 4px; padding: 9px 13px; color: #fff; font-size: 15px; }
+  .chat-send:disabled { opacity: 0.5; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo-sub">Persoenliches</div>
+    <div class="logo">Stream<span>Board</span></div>
+  </div>
+  <div class="header-btns">
+    <button class="btn-tab active" id="btn-series" onclick="switchTab('series')">SERIEN</button>
+    <button class="btn-tab" id="btn-movies" onclick="switchTab('movies')">FILME</button>
+    <button class="btn-reload" onclick="loadItems()" title="Neu laden">&#8635;</button>
+    <button class="btn-chat" id="btn-chat" onclick="toggleChat()">KI CHAT</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="main">
+    <div class="filters" id="filters">
+      <span class="filter-label">Filter:</span>
+      <button class="btn-filter" data-provider="8" onclick="toggleProvider(8)" style="border-color:#E50914">NF</button>
+      <button class="btn-filter" data-provider="119" onclick="toggleProvider(119)" style="border-color:#1A2A3E">AP</button>
+      <button class="btn-filter" data-provider="337" onclick="toggleProvider(337)" style="border-color:#1A2A3E">D+</button>
+      <button class="btn-filter" data-provider="350" onclick="toggleProvider(350)" style="border-color:#1A2A3E">ATV</button>
+      <button class="btn-filter" data-provider="39" onclick="toggleProvider(39)" style="border-color:#1A2A3E">WOW</button>
+      <button class="btn-filter" data-provider="384" onclick="toggleProvider(384)" style="border-color:#1A2A3E">HBO</button>
+      <button class="btn-filter" data-provider="207" onclick="toggleProvider(207)" style="border-color:#1A2A3E">JN</button>
+      <div class="filter-sep"></div>
+      <button class="btn-filter" data-status="none" onclick="toggleStatus('none')">&#9675; Nicht gesehen</button>
+      <button class="btn-filter" data-status="watching" onclick="toggleStatus('watching')">&#9681; Angefangen</button>
+      <button class="btn-filter" data-status="done" onclick="toggleStatus('done')">&#9679; Gesehen</button>
+      <span class="count" id="count">0 Titel</span>
+    </div>
+    <div id="error-box" class="error-box" style="display:none">
+      <span id="error-msg"></span>
+      <button class="btn-retry" onclick="loadItems()">Erneut versuchen</button>
+    </div>
+    <div id="loader" class="loader">
+      <div class="spinner"></div>
+      <div class="loader-msg" id="loader-msg">Lade Daten von TMDB...</div>
+    </div>
+    <div id="grid" class="grid" style="display:none"></div>
+  </div>
+  <div class="chat-panel" id="chat-panel" style="display:none">
+    <div class="chat-header">KI-Assistent</div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="msg assistant"><div class="msg-bubble">Hey! Sag mir was du geguckt hast, z.B. "Hab Succession fertig" oder "Was laeuft auf Netflix?"</div></div>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chat-input" placeholder="z.B. Hab Succession fertig" onkeydown="if(event.key==='Enter') sendChat()">
+      <button class="chat-send" id="chat-send" onclick="sendChat()">&#8594;</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZmJiZmZjN2FjYiIsIm5iZiI6MTc3ODQyNDczMy42NjUsInN1YiI6IjZhMDA5YjlkM2U5ODRiOTM2NmVjMjBhNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-dkvM50nAGc7oQjIqTfgDcGKV--lvti4DY2tRl7MHu0";
+const CLAUDE_API = "https://api.anthropic.com/v1/messages";
+
+const PROVIDERS = {
+  8:   { name: "Netflix",       color: "#E50914", short: "NF"  },
+  119: { name: "Amazon Prime",  color: "#00A8E0", short: "AP"  },
+  337: { name: "Disney+",       color: "#113CCF", short: "D+"  },
+  350: { name: "Apple TV+",     color: "#555",    short: "ATV" },
+  39:  { name: "WOW",           color: "#FF6B35", short: "WOW" },
+  384: { name: "HBO Max",       color: "#5822B4", short: "HBO" },
+  207: { name: "Joyn",          color: "#00C896", short: "JN"  },
+};
+
+const WATCH = {
+  none:     { label: "Nicht gesehen", icon: "&#9675;", color: "#555"    },
+  watching: { label: "Angefangen",    icon: "&#9681;", color: "#F5A623" },
+  done:     { label: "Gesehen",       icon: "&#9679;", color: "#4CAF50" },
+};
+
+let activeTab      = "series";
+let allItems       = [];
+let watchStatus    = JSON.parse(localStorage.getItem("streamboard_status") || "{}");
+let filterProvider = null;
+let filterStatus   = null;
+let chatHistory    = [];
+let showChat       = false;
+
+function saveStatus() {
+  localStorage.setItem("streamboard_status", JSON.stringify(watchStatus));
+}
+
+function cycleStatus(key) {
+  const order = ["none", "watching", "done"];
+  const cur = watchStatus[key] || "none";
+  watchStatus[key] = order[(order.indexOf(cur) + 1) % 3];
+  saveStatus();
+  renderGrid();
+}
+
+async function tmdb(path) {
+  const sep = path.includes("?") ? "&" : "?";
+  const r = await fetch("https://api.themoviedb.org/3" + path + sep + "language=de-DE&region=DE", {
+    headers: { Authorization: "Bearer " + TMDB_TOKEN }
+  });
+  if (!r.ok) throw new Error("TMDB " + r.status);
+  return r.json();
+}
+
+async function loadItems() {
+  document.getElementById("loader").style.display = "flex";
+  document.getElementById("grid").style.display = "none";
+  document.getElementById("error-box").style.display = "none";
+  document.getElementById("loader-msg").textContent = "Lade Top-" + (activeTab === "series" ? "Serien" : "Filme") + " von TMDB...";
+  allItems = [];
+
+  try {
+    const type = activeTab === "series" ? "tv" : "movie";
+    const data = await tmdb("/" + type + "/top_rated?page=1");
+    const top12 = (data.results || []).slice(0, 12);
+
+    document.getElementById("loader-msg").textContent = "Lade Streaming-Anbieter...";
+    const enriched = await Promise.all(top12.map(async item => {
+      try {
+        const wp = await tmdb("/" + type + "/" + item.id + "/watch/providers");
+        const providers = (wp.results && wp.results.DE && wp.results.DE.flatrate)
+          ? wp.results.DE.flatrate.map(p => p.provider_id) : [];
+        return { ...item, providers, mediaType: activeTab };
+      } catch { return { ...item, providers: [], mediaType: activeTab }; }
+    }));
+
+    allItems = enriched;
+    document.getElementById("loader").style.display = "none";
+    document.getElementById("grid").style.display = "grid";
+    renderGrid();
+  } catch(e) {
+    document.getElementById("loader").style.display = "none";
+    document.getElementById("error-box").style.display = "flex";
+    document.getElementById("error-msg").textContent = "Fehler: " + e.message;
+  }
+}
+
+function renderGrid() {
+  const filtered = allItems.filter(item => {
+    const key = item.mediaType + "-" + item.id;
+    const pm = !filterProvider || (item.providers || []).includes(filterProvider);
+    const sm = !filterStatus || (watchStatus[key] || "none") === filterStatus;
+    return pm && sm;
+  });
+
+  document.getElementById("count").textContent = filtered.length + " Titel";
+  const grid = document.getElementById("grid");
+  grid.innerHTML = filtered.map(item => {
+    const key = item.mediaType + "-" + item.id;
+    const status = watchStatus[key] || "none";
+    const pct = Math.round((item.vote_average || 0) * 10);
+    const scoreColor = pct >= 75 ? "#4CAF50" : pct >= 50 ? "#F5A623" : "#E53935";
+    const title = item.name || item.title || "";
+    const poster = item.poster_path
+      ? '<img src="https://image.tmdb.org/t/p/w300' + item.poster_path + '" alt="' + title.replace(/"/g,"") + '" loading="lazy">'
+      : '<div class="poster-placeholder">🎬</div>';
+    const providerTags = (item.providers || [])
+      .filter(pid => PROVIDERS[pid])
+      .map(pid => '<span class="provider-tag" style="background:' + PROVIDERS[pid].color + '">' + PROVIDERS[pid].short + '</span>')
+      .join("") || '<span class="no-provider">kein DE-Stream</span>';
+
+    return '<div class="card">' +
+      '<div class="poster-wrap">' + poster +
+        '<div class="score-badge" style="color:' + scoreColor + ';border-color:' + scoreColor + '">' + pct + '%</div>' +
+        '<div class="status-icon" onclick="cycleStatus(\'' + key + '\')" title="Status wechseln">' + WATCH[status].icon + '</div>' +
+      '</div>' +
+      '<div class="card-body">' +
+        '<div class="card-title">' + title + '</div>' +
+        '<div class="provider-tags">' + providerTags + '</div>' +
+        '<div class="status-label" style="color:' + WATCH[status].color + '" onclick="cycleStatus(\'' + key + '\')">' +
+          WATCH[status].icon + ' ' + WATCH[status].label +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+function switchTab(tab) {
+  if (tab === activeTab) return;
+  activeTab = tab;
+  filterProvider = null;
+  filterStatus = null;
+  document.getElementById("btn-series").className = "btn-tab" + (tab === "series" ? " active" : "");
+  document.getElementById("btn-movies").className = "btn-tab" + (tab === "movies" ? " active" : "");
+  document.querySelectorAll(".btn-filter").forEach(b => b.classList.remove("active"));
+  loadItems();
+}
+
+function toggleProvider(id) {
+  filterProvider = filterProvider === id ? null : id;
+  document.querySelectorAll("[data-provider]").forEach(b => {
+    const pid = parseInt(b.dataset.provider);
+    b.classList.toggle("active", pid === filterProvider);
+    if (PROVIDERS[pid]) b.style.background = (pid === filterProvider) ? PROVIDERS[pid].color : "transparent";
+  });
+  renderGrid();
+}
+
+function toggleStatus(s) {
+  filterStatus = filterStatus === s ? null : s;
+  document.querySelectorAll("[data-status]").forEach(b => {
+    b.classList.toggle("active", b.dataset.status === filterStatus);
+    b.style.background = b.dataset.status === filterStatus ? "rgba(123,97,255,0.15)" : "transparent";
+  });
+  renderGrid();
+}
+
+function toggleChat() {
+  showChat = !showChat;
+  document.getElementById("chat-panel").style.display = showChat ? "flex" : "none";
+  document.getElementById("btn-chat").className = "btn-chat" + (showChat ? " active" : "");
+}
+
+function addMessage(role, text) {
+  const box = document.getElementById("chat-messages");
+  const div = document.createElement("div");
+  div.className = "msg " + role;
+  div.innerHTML = '<div class="msg-bubble">' + text + '</div>';
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendChat() {
+  const input = document.getElementById("chat-input");
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = "";
+  addMessage("user", msg);
+  chatHistory.push({ role: "user", content: msg });
+  document.getElementById("chat-send").disabled = true;
+
+  const thinking = document.createElement("div");
+  thinking.className = "chat-thinking";
+  thinking.textContent = "denke nach...";
+  document.getElementById("chat-messages").appendChild(thinking);
+
+  const itemsSummary = allItems.map(i => ({
+    id: i.mediaType + "-" + i.id,
+    title: i.name || i.title,
+    providers: (i.providers || []).map(p => PROVIDERS[p] ? PROVIDERS[p].name : null).filter(Boolean),
+    status: watchStatus[i.mediaType + "-" + i.id] || "none",
+  }));
+
+  const system = "Du bist Assistent fuer ein Streaming-Dashboard.\n" +
+    "Status-Werte: none, watching, done\n" +
+    "Wenn Status geaendert werden soll, schreibe am Ende exakt:\n" +
+    "<status_update>{\"id\": \"series-123\", \"status\": \"done\"}</status_update>\n\n" +
+    "Dashboard:\n" + JSON.stringify(itemsSummary) + "\n\nAntworte auf Deutsch, kurz und freundlich.";
+
+  try {
+    const res = await fetch(CLAUDE_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 800, system, messages: chatHistory })
+    });
+    const data = await res.json();
+    const fullText = (data.content && data.content[0] && data.content[0].text) || "Keine Antwort.";
+
+    const regex = /<status_update>([\s\S]*?)<\/status_update>/g;
+    let match;
+    while ((match = regex.exec(fullText)) !== null) {
+      try {
+        const u = JSON.parse(match[1].trim());
+        if (u.id && u.status) watchStatus[u.id] = u.status;
+      } catch {}
+    }
+    saveStatus();
+    renderGrid();
+
+    const clean = fullText.replace(/<status_update>[\s\S]*?<\/status_update>/g, "").trim();
+    chatHistory.push({ role: "assistant", content: clean });
+    thinking.remove();
+    addMessage("assistant", clean);
+  } catch(e) {
+    thinking.remove();
+    addMessage("assistant", "Verbindungsfehler: " + e.message);
+  }
+  document.getElementById("chat-send").disabled = false;
+}
+
+loadItems();
+</script>
+</body>
+</html>
