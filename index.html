@@ -120,7 +120,7 @@ main { padding: 12px 16px 100px; }
 </head>
 <body>
 
-<div id="auth-screen">
+<div id="auth-screen" style="display:none">
   <div class="auth-card">
     <div class="auth-logo">Stream<span>Board</span></div>
     <div class="auth-sub">Dein persoenliches Streaming-Dashboard</div>
@@ -130,13 +130,13 @@ main { padding: 12px 16px 100px; }
   </div>
 </div>
 
-<div id="app">
+<div id="app" style="display:block">
   <header>
     <div class="header-top">
       <div class="logo">Stream<span>Board</span></div>
       <div class="header-actions">
         <button class="icon-btn" id="search-btn">&#128269;</button>
-        <button class="icon-btn" id="signout-btn">&#128100;</button>
+        
       </div>
     </div>
     <div class="status-tabs" id="status-tabs">
@@ -156,7 +156,7 @@ main { padding: 12px 16px 100px; }
   </main>
 </div>
 
-<button class="chat-fab" id="chat-fab">&#128172;</button>
+<button class="chat-fab" id="chat-fab" style="display:flex">&#128172;</button>
 
 <div class="chat-overlay" id="chat-overlay">
   <div class="chat-panel">
@@ -469,9 +469,6 @@ function loadUserStatuses() {
 }
 
 function showApp() {
-  document.getElementById("auth-screen").style.display = "none";
-  document.getElementById("app").style.display = "block";
-  document.getElementById("chat-fab").style.display = "flex";
   renderProviderBar();
   document.getElementById("status-tabs").querySelectorAll(".status-tab").forEach(function(t) {
     t.addEventListener("click", function() { switchTab(this.getAttribute("data-tab")); });
@@ -583,19 +580,9 @@ function sendChat() {
   });
 }
 
-sb.auth.getSession().then(function(result) {
-  if (result.data && result.data.session) {
-    currentUser = result.data.session.user;
-    showApp();
-  }
-});
-
-sb.auth.onAuthStateChange(function(event, session) {
-  if (session && !currentUser) {
-    currentUser = session.user;
-    showApp();
-  }
-});
+// Direkt starten ohne Login
+currentUser = {id: "default-user"};
+showApp();
 </script>
 </body>
 </html>
