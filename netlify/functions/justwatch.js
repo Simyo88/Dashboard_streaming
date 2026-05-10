@@ -1,5 +1,3 @@
-const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZmJiZmZjN2FjYiIsIm5iZiI6MTc3ODQyNDczMy42NjUsInN1YiI6IjZhMDA5YjlkM2U5ODRiOTM2NmVjMjBhNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-dkvM50nAGc7oQjIqTfgDcGKV--lvti4DY2tRl7MHu0";
-
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
@@ -9,17 +7,13 @@ const CORS_HEADERS = {
 async function jwQuery(query, variables) {
   const res = await fetch("https://apis.justwatch.com/graphql", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "User-Agent": "Mozilla/5.0" },
+    headers: { 
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    },
     body: JSON.stringify({ query, variables })
   });
   return res.json();
-}
-
-async function tmdbSearch(title, year) {
-  const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(title)}&language=de-DE${year ? "&year=" + year : ""}`;
-  const res = await fetch(url, { headers: { Authorization: "Bearer " + TMDB_TOKEN } });
-  const data = await res.json();
-  return (data.results || [])[0] || null;
 }
 
 exports.handler = async function(event) {
@@ -30,7 +24,6 @@ exports.handler = async function(event) {
   const params = event.queryStringParameters || {};
   const action = params.action || "popular";
   const slug = params.slug || "nfx";
-  const page = parseInt(params.page || "1");
   const type = params.type || "all";
   const query = params.query || "";
 
@@ -43,11 +36,10 @@ exports.handler = async function(event) {
               node {
                 content(country: $country, language: $language) {
                   title
-                  originalTitle
-                  fullPath
                   posterUrl
                   releaseYear
-                  scoring { imdbScore imdbVotes }
+                  shortDescription
+                  scoring { imdbScore tmdbScore }
                   genres { translation }
                 }
                 offers(country: $country, platform: WEB) {
@@ -62,34 +54,29 @@ exports.handler = async function(event) {
         }
       `;
       const data = await jwQuery(gql, { country: "DE", language: "de", query });
-      const items = (data?.data?.searchTitles?.edges || []).map(e => formatItem(e.node));
+      const edges = data?.data?.searchTitles?.edges || [];
+      const items = edges.map(e => formatItem(e.node, "DE", "de"));
       return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(items) };
     }
 
-    // Popular titles per provider
-    const contentFilter = type === "series" ? '["SHOW"]' : type === "movie" ? '["MOVIE"]' : '["SHOW","MOVIE"]';
+    // Popular - gebruik simpelere query zonder objectTypes filter
     const gql = `
-      query Popular($country: Country!, $language: Language!, $slug: [String!]!) {
+      query Popular($country: Country!, $language: Language!, $slugs: [String!]!) {
         popularTitles(
           country: $country
-          filter: { packages: $slug, objectTypes: ${contentFilter} }
+          filter: { packages: $slugs }
           first: 40
-          after: ""
         ) {
           totalCount
           edges {
             node {
               content(country: $country, language: $language) {
                 title
-                originalTitle
-                fullPath
                 posterUrl
                 releaseYear
                 shortDescription
-                scoring { imdbScore imdbVotes tmdbScore }
+                scoring { imdbScore tmdbScore }
                 genres { translation }
-                runtime
-                productionCountries
               }
               offers(country: $country, platform: WEB) {
                 package { shortName clearName }
@@ -98,9 +85,12 @@ exports.handler = async function(event) {
               objectType
               objectId
               ... on Show {
-                seenlistEntry { createdAt }
-                tvShowTrackingEntry { createdAt }
-                seasons { content(country: $country, language: $language) { seasonNumber episodeCount } }
+                seasons {
+                  content(country: $country, language: $language) {
+                    seasonNumber
+                    episodeCount
+                  }
+                }
               }
             }
           }
@@ -108,22 +98,41 @@ exports.handler = async function(event) {
       }
     `;
 
-    const data = await jwQuery(gql, { country: "DE", language: "de", slug: [slug] });
+    const data = await jwQuery(gql, { country: "DE", language: "de", slugs: [slug] });
+    
+    if (data.errors) {
+      return { 
+        statusCode: 200, 
+        headers: CORS_HEADERS, 
+        body: JSON.stringify({ items: [], total: 0, debug: data.errors }) 
+      };
+    }
+
     const edges = data?.data?.popularTitles?.edges || [];
     const total = data?.data?.popularTitles?.totalCount || 0;
-    const items = edges.map(e => formatItem(e.node));
+
+    let items = edges.map(e => formatItem(e.node, "DE", "de"));
+
+    // Filter by type if needed
+    if (type === "series") items = items.filter(i => i.type === "series");
+    if (type === "movie") items = items.filter(i => i.type === "movie");
 
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
       body: JSON.stringify({ items, total })
     };
+
   } catch(e) {
-    return { statusCode: 500, headers: CORS_HEADERS, body: JSON.stringify({ error: e.message }) };
+    return { 
+      statusCode: 500, 
+      headers: CORS_HEADERS, 
+      body: JSON.stringify({ error: e.message, items: [], total: 0 }) 
+    };
   }
 };
 
-function formatItem(node) {
+function formatItem(node, country, language) {
   const c = node.content || {};
   const flatrate = (node.offers || [])
     .filter(o => o.monetizationType === "FLATRATE")
@@ -133,21 +142,21 @@ function formatItem(node) {
   const seasons = (node.seasons || [])
     .map(s => s.content)
     .filter(Boolean)
-    .sort((a, b) => a.seasonNumber - b.seasonNumber);
+    .filter(s => s.seasonNumber > 0)
+    .sort((a, b) => a.seasonNumber - b.seasonNumber)
+    .map(s => ({ number: s.seasonNumber, episodes: s.episodeCount }));
 
   return {
     id: node.objectId,
     type: node.objectType === "SHOW" ? "series" : "movie",
-    title: c.title || c.originalTitle || "",
-    originalTitle: c.originalTitle || "",
+    title: c.title || "",
     poster: c.posterUrl ? c.posterUrl.replace("{profile}", "s332").replace("{format}", "jpg") : null,
     year: c.releaseYear || null,
     overview: c.shortDescription || "",
     imdbScore: c.scoring?.imdbScore || null,
     tmdbScore: c.scoring?.tmdbScore || null,
     genres: (c.genres || []).map(g => g.translation).slice(0, 2),
-    runtime: c.runtime || null,
     providers: flatrate,
-    seasons: seasons.map(s => ({ number: s.seasonNumber, episodes: s.episodeCount }))
+    seasons: seasons
   };
 }
