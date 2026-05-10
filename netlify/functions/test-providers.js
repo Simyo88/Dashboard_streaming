@@ -1,45 +1,62 @@
 exports.handler = async function(event, context) {
   const providers = [
-    { name: "Netflix",      id: "8"   },
-    { name: "Amazon Prime", id: "9"   },
-    { name: "Disney+",      id: "337" },
-    { name: "Apple TV+",    id: "350" },
-    { name: "WOW",          id: "29"  },
-    { name: "HBO Max",      id: "384" },
-    { name: "RTL+",         id: "149" },
-    { name: "Joyn",         id: "209" },
+    { name: "Netflix",      slug: "nfx" },
+    { name: "Amazon Prime", slug: "amp" },
+    { name: "Disney+",      slug: "dnp" },
+    { name: "Apple TV+",    slug: "atp" },
+    { name: "WOW",          slug: "wow" },
+    { name: "HBO Max",      slug: "max" },
+    { name: "RTL+",         slug: "rtl" },
+    { name: "Joyn",         slug: "joy" },
   ];
 
   const results = {};
 
   for (const provider of providers) {
     try {
-      const body = JSON.stringify({
-        page_size: 4,
-        page: 1,
-        content_types: ["show", "movie"],
-        monetization_types: ["flatrate"],
-        providers: [provider.id]
-      });
+      const query = `
+        query GetPopularTitles($country: Country!, $platform: [String!]!) {
+          popularTitles(
+            country: $country
+            filter: { packages: $platform }
+            first: 4
+          ) {
+            totalCount
+            edges {
+              node {
+                content {
+                  title
+                  objectType
+                }
+              }
+            }
+          }
+        }
+      `;
 
-      const res = await fetch("https://apis.justwatch.com/content/titles/de/popular", {
+      const res = await fetch("https://apis.justwatch.com/graphql", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0"
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         },
-        body
+        body: JSON.stringify({
+          query,
+          variables: { country: "DE", platform: [provider.slug] }
+        })
       });
 
       if (res.ok) {
         const data = await res.json();
+        const titles = data?.data?.popularTitles;
         results[provider.name] = {
           status: "OK",
-          total: data.total_results || 0,
-          sample: (data.items || []).slice(0, 2).map(i => i.title)
+          total: titles?.totalCount || 0,
+          sample: (titles?.edges || []).slice(0, 3).map(e => e.node.content.title)
         };
       } else {
-        results[provider.name] = { status: "HTTP " + res.status };
+        const text = await res.text();
+        results[provider.name] = { status: "HTTP " + res.status, body: text.slice(0, 200) };
       }
     } catch(e) {
       results[provider.name] = { status: "Fehler: " + e.message };
