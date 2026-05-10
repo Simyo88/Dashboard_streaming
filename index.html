@@ -247,7 +247,7 @@ const INITIAL_WANT = ["the studio","dope thief","mad max fury road","sonne und b
 
 const SUNDAY_LIST = ["als du mich sahst","zwei an einem tag"];
 
-let sb, currentUser, currentTab = "browse", currentProvider = null;
+let sb, currentUser, currentTab = "browse", currentProvider = 8;
 let allItems = [], userStatuses = {}, seasonStatuses = {}, searchTimeout;
 let showSearch = false, showChat = false, chatHistory = [], itemStore = {};
 
@@ -343,8 +343,8 @@ async function loadBrowse() {
   try {
     const pid = currentProvider || 8;
     const [tvData, movieData] = await Promise.all([
-      tmdb("/discover/tv?with_watch_providers=" + pid + "&watch_region=DE&sort_by=vote_average.desc&vote_count.gte=100&page=1"),
-      tmdb("/discover/movie?with_watch_providers=" + pid + "&watch_region=DE&sort_by=vote_average.desc&vote_count.gte=200&page=1")
+      tmdb("/discover/tv?with_watch_providers=" + pid + "&watch_region=DE&sort_by=vote_average.desc&vote_count.gte=20&page=1"),
+      tmdb("/discover/movie?with_watch_providers=" + pid + "&watch_region=DE&sort_by=vote_average.desc&vote_count.gte=50&page=1")
     ]);
     const tvItems = (tvData.results || []).slice(0, 20).map(i => ({ ...i, mediaType: "series", title: i.name }));
     const movieItems = (movieData.results || []).slice(0, 20).map(i => ({ ...i, mediaType: "movie" }));
