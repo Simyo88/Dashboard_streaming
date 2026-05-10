@@ -148,6 +148,10 @@ main { padding: 12px 16px 100px; }
     </div>
   </header>
   <div id="provider-bar" class="provider-scroll" style="display:none"></div>
+<div id="jw-test" style="padding:12px 16px;display:none">
+  <button onclick="testJustWatch()" style="background:#22c55e;color:#fff;border:none;padding:10px 20px;border-radius:20px;cursor:pointer;font-size:13px">JustWatch testen</button>
+  <span id="jw-result" style="margin-left:12px;font-size:13px"></span>
+</div>
   <div id="search-bar" class="search-wrap" style="display:none">
     <input class="search-input" id="search-input" placeholder="Serie oder Film suchen...">
   </div>
@@ -327,7 +331,7 @@ function loadBrowse() {
 
 function loadMyList(status) {
   setLoading("Lade deine Liste...");
-  sb.from("watch_status").select("*, titles(*)").eq("user_id", currentUser.id).eq("status", status).then(function(result) {
+  sb.from("watch_status").select("*, titles(*)").eq("status", status).then(function(result) {
     var data = result.data;
     if (!data || data.length === 0) {
       var msgs = {want:"Noch nichts auf der Watchlist", watching:"Keine angefangenen Titel", aborted:"Keine abgebrochenen Titel", done:"Noch nichts als gesehen markiert"};
@@ -446,21 +450,41 @@ function setStatus(key, status, mediaType, tmdbId, item) {
     overview: item ? (item.overview || null) : null
   };
   sb.from("titles").upsert(titleData, {onConflict:"id"}).then(function() {
-    sb.from("watch_status").upsert({title_id: key, user_id: currentUser.id, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id,user_id"});
+    sb.from("watch_status").upsert({title_id: key, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id"});
   });
 }
 
 function setSeasonStatus(titleId, seasonNum, status) {
   if (!seasonStatuses[titleId]) seasonStatuses[titleId] = {};
   seasonStatuses[titleId][seasonNum] = status;
-  sb.from("season_status").upsert({title_id: titleId, user_id: currentUser.id, season_number: seasonNum, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id,user_id,season_number"});
+  sb.from("season_status").upsert({title_id: titleId, season_number: seasonNum, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id,season_number"});
+}
+
+function testJustWatch() {
+  document.getElementById("jw-result").textContent = "Teste...";
+  fetch("https://apis.justwatch.com/content/titles/de/popular", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({page_size: 3, page: 1, content_types: ["show"]})
+  }).then(function(r) {
+    if (r.ok) {
+      document.getElementById("jw-result").textContent = "JustWatch funktioniert! Status: " + r.status;
+      document.getElementById("jw-result").style.color = "#22c55e";
+    } else {
+      document.getElementById("jw-result").textContent = "Fehler: " + r.status;
+      document.getElementById("jw-result").style.color = "#ef4444";
+    }
+  }).catch(function(e) {
+    document.getElementById("jw-result").textContent = "Blockiert: " + e.message;
+    document.getElementById("jw-result").style.color = "#ef4444";
+  });
 }
 
 function loadUserStatuses() {
-  sb.from("watch_status").select("*").eq("user_id", currentUser.id).then(function(r) {
+  sb.from("watch_status").select("*").then(function(r) {
     if (r.data) r.data.forEach(function(row) { userStatuses[row.title_id] = row.status; });
   });
-  sb.from("season_status").select("*").eq("user_id", currentUser.id).then(function(r) {
+  sb.from("season_status").select("*").then(function(r) {
     if (r.data) r.data.forEach(function(row) {
       if (!seasonStatuses[row.title_id]) seasonStatuses[row.title_id] = {};
       seasonStatuses[row.title_id][row.season_number] = row.status;
@@ -469,6 +493,7 @@ function loadUserStatuses() {
 }
 
 function showApp() {
+  document.getElementById("jw-test").style.display = "block";
   renderProviderBar();
   document.getElementById("status-tabs").querySelectorAll(".status-tab").forEach(function(t) {
     t.addEventListener("click", function() { switchTab(this.getAttribute("data-tab")); });
