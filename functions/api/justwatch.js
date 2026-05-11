@@ -85,6 +85,19 @@ const SEARCH_QUERY = `
   }
 `;
 
+async function getTmdbPoster(title, type) {
+  try {
+    const t = type === "series" ? "tv" : "movie";
+    const url = "https://api.themoviedb.org/3/search/" + t + "?query=" + encodeURIComponent(title) + "&language=de-DE";
+    const res = await fetch(url, { headers: { Authorization: "Bearer " + TMDB_TOKEN } });
+    const data = await res.json();
+    const result = (data.results || [])[0];
+    return result && result.poster_path ? "https://image.tmdb.org/t/p/w300" + result.poster_path : null;
+  } catch(e) {
+    return null;
+  }
+}
+
 function formatItem(node) {
   const c = node.content || {};
   const flatrate = (node.offers || [])
@@ -99,18 +112,11 @@ function formatItem(node) {
     .sort((a, b) => a.seasonNumber - b.seasonNumber)
     .map(s => ({ number: s.seasonNumber, episodes: null }));
 
-  let poster = null;
-  if (c.posterUrl) {
-    const p = c.posterUrl.replace("{profile}", "s332").replace("{format}", "jpg");
-    const path = p.startsWith("/") ? p : "/" + p;
-    poster = "/api/poster?path=" + encodeURIComponent(path);
-  }
-
   return {
     id: node.objectId,
     type: node.objectType === "SHOW" ? "series" : "movie",
     title: c.title || "",
-    poster,
+    poster: null,
     overview: c.shortDescription || "",
     imdbScore: c.scoring?.imdbScore || null,
     tmdbScore: c.scoring?.tmdbScore || null,
@@ -142,6 +148,9 @@ export async function onRequest(context) {
       }
       const edges = data?.data?.searchTitles?.edges || [];
       const items = edges.map(e => formatItem(e.node));
+      await Promise.all(items.map(async (item) => {
+        item.poster = await getTmdbPoster(item.title, item.type);
+      }));
       return new Response(JSON.stringify(items), { headers: CORS });
     }
 
@@ -157,6 +166,11 @@ export async function onRequest(context) {
 
     if (type === "series") items = items.filter(i => i.type === "series");
     if (type === "movie") items = items.filter(i => i.type === "movie");
+
+    // Fetch TMDB posters in parallel
+    await Promise.all(items.map(async (item) => {
+      item.poster = await getTmdbPoster(item.title, item.type);
+    }));
 
     return new Response(JSON.stringify({ items, total }), { headers: CORS });
 
