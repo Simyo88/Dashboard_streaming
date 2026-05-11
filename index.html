@@ -290,12 +290,19 @@ function loadMyList(status) {
     var data = r.data || [];
     if (!data.length) { setEmpty(STATUS[status].icon, STATUS[status].label + " ist leer"); return; }
     var items = data.filter(r => r.titles).map(function(r) {
-      return Object.assign({}, r.titles, {
-        id: r.titles.tmdb_id || r.title_id,
-        type: r.titles.media_type || "series",
+      var t = r.titles;
+      return {
+        id: t.tmdb_id || r.title_id,
+        type: t.media_type || "series",
+        title: t.title || "",
+        poster: t.poster_path || null,
+        overview: t.overview || "",
+        imdbScore: t.vote_average || null,
+        tmdbScore: null,
+        genres: [],
         providers: [],
         seasons: []
-      });
+      };
     });
     renderGrid(items, STATUS[status].label + " (" + items.length + ")");
   });
