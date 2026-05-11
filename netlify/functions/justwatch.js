@@ -98,9 +98,11 @@ function formatItem(node) {
     .sort((a, b) => a.seasonNumber - b.seasonNumber)
     .map(s => ({ number: s.seasonNumber, episodes: null }));
 
-  const poster = c.posterUrl
-    ? c.posterUrl.replace("{profile}", "s332").replace("{format}", "jpg")
-    : null;
+  let poster = null;
+  if (c.posterUrl) {
+    const p = c.posterUrl.replace("{profile}", "s332").replace("{format}", "jpg");
+    poster = p.startsWith("http") ? p : "https://images.justwatch.com" + p;
+  }
 
   return {
     id: node.objectId,
