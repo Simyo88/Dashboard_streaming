@@ -7,150 +7,208 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
-  --glass: rgba(255,255,255,0.6);
-  --glass-border: rgba(255,255,255,0.85);
-  --glass-shadow: rgba(100,120,160,0.12);
-  --text: #1a2340;
-  --text-muted: #6b7a99;
-  --accent: #5b6ef5;
-  --card-radius: 16px;
+  --bg: #0a0a0a;
+  --surface: #161616;
+  --surface2: #1f1f1f;
+  --border: rgba(255,255,255,0.08);
+  --text: #f0f0f0;
+  --text-muted: #888;
+  --accent: #ffffff;
+  --want: #bf5af2;
+  --watching: #ff9f0a;
+  --aborted: #ff453a;
+  --done: #32d74b;
+  --radius: 12px;
   --pill: 50px;
-  --want: #a78bfa;
-  --watching: #f5a623;
-  --aborted: #ef4444;
-  --done: #22c55e;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background: linear-gradient(135deg, #dce6f5 0%, #e8eef7 50%, #d5e4f0 100%); min-height: 100vh; color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif; min-height: 100vh; overflow-x: hidden; }
 
-header { position: sticky; top: 0; z-index: 200; background: rgba(232,238,247,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.6); padding: 12px 16px; }
-.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.logo { font-size: 22px; font-weight: 700; }
-.logo span { color: var(--accent); }
-.icon-btn { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 12px; padding: 8px 12px; font-size: 16px; cursor: pointer; color: var(--text); }
+/* Header */
+header { position: sticky; top: 0; z-index: 200; background: rgba(10,10,10,0.92); backdrop-filter: blur(24px); border-bottom: 1px solid var(--border); padding: 14px 20px; }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, #fff 0%, #aaa 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.logo-icon svg { width: 18px; height: 18px; }
+.logo-text { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+.logo-text span { color: var(--text-muted); font-weight: 300; }
+.header-actions { display: flex; gap: 8px; }
+.icon-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 15px; transition: all 0.2s; }
+.icon-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
 
-.status-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+/* Status tabs */
+.status-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
 .status-tabs::-webkit-scrollbar { display: none; }
-.stab { flex-shrink: 0; padding: 7px 14px; border-radius: var(--pill); border: 1.5px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.5); color: var(--text-muted); white-space: nowrap; transition: all 0.2s; }
+.stab { flex-shrink: 0; padding: 7px 16px; border-radius: var(--pill); border: 1px solid var(--border); font-size: 13px; font-weight: 500; cursor: pointer; background: transparent; color: var(--text-muted); white-space: nowrap; transition: all 0.2s; }
+.stab:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.stab.active { color: #000; font-weight: 600; border-color: transparent; }
 
-.provider-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 10px 16px 4px; }
-.provider-bar::-webkit-scrollbar { display: none; }
-.ppill { flex-shrink: 0; padding: 7px 14px; border-radius: var(--pill); border: 1.5px solid rgba(255,255,255,0.7); background: rgba(255,255,255,0.5); font-size: 12px; font-weight: 700; cursor: pointer; color: var(--text-muted); transition: all 0.2s; white-space: nowrap; }
+/* Provider & Type bars */
+.sub-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 10px 20px 4px; }
+.sub-bar::-webkit-scrollbar { display: none; }
+.ppill { flex-shrink: 0; padding: 6px 14px; border-radius: var(--pill); border: 1px solid var(--border); background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-muted); transition: all 0.2s; white-space: nowrap; }
+.ppill:hover { color: var(--text); }
+.ppill.active { color: #000; border-color: transparent; }
+.typebtn { padding: 5px 14px; border-radius: var(--pill); border: 1px solid var(--border); background: transparent; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
+.typebtn.active { background: var(--surface2); color: var(--text); border-color: rgba(255,255,255,0.2); }
 
-.type-bar { display: flex; gap: 6px; padding: 4px 16px 8px; }
-.typebtn { padding: 5px 14px; border-radius: var(--pill); border: 1.5px solid rgba(255,255,255,0.7); background: rgba(255,255,255,0.5); font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
-.typebtn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* Sort bar */
+.sort-bar { display: flex; align-items: center; gap: 8px; padding: 6px 20px 10px; }
+.sort-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.sort-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; color: var(--text); font-size: 12px; cursor: pointer; outline: none; }
 
-.search-wrap { padding: 6px 16px 10px; }
-.search-input { width: 100%; padding: 11px 18px; border-radius: var(--pill); border: 1.5px solid rgba(255,255,255,0.8); background: rgba(255,255,255,0.75); font-size: 15px; color: var(--text); outline: none; }
+/* Search */
+.search-wrap { padding: 6px 20px 10px; }
+.search-input { width: 100%; padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface2); font-size: 15px; color: var(--text); outline: none; transition: border-color 0.2s; }
+.search-input:focus { border-color: rgba(255,255,255,0.3); }
+.search-input::placeholder { color: var(--text-muted); }
 
-main { padding: 12px 16px 100px; }
-.section-title { font-size: 17px; font-weight: 700; margin: 14px 0 10px; }
+/* Main */
+main { padding: 16px 20px 100px; }
+.section-title { font-size: 20px; font-weight: 700; margin: 16px 0 12px; letter-spacing: -0.3px; }
 
-.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-@media (min-width: 480px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+/* Grid */
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 480px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
 @media (min-width: 680px) { .grid { grid-template-columns: repeat(4, 1fr); } }
 @media (min-width: 900px) { .grid { grid-template-columns: repeat(5, 1fr); } }
 @media (min-width: 1100px) { .grid { grid-template-columns: repeat(6, 1fr); } }
+@media (min-width: 1400px) { .grid { grid-template-columns: repeat(7, 1fr); } }
 
-.card { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: var(--card-radius); overflow: hidden; box-shadow: 0 4px 18px var(--glass-shadow); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+/* Card */
+.card { position: relative; border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; background: var(--surface); aspect-ratio: 2/3; }
 .card:active { transform: scale(0.97); }
-@media (hover: hover) { .card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px var(--glass-shadow); } }
-.poster { position: relative; padding-top: 150%; background: rgba(200,210,230,0.4); overflow: hidden; }
-.poster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.poster-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 40px; }
-.score { position: absolute; top: 7px; right: 7px; background: rgba(255,255,255,0.92); border-radius: 8px; padding: 3px 7px; font-size: 11px; font-weight: 700; }
-.status-dot { position: absolute; top: 7px; left: 7px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; background: rgba(255,255,255,0.92); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-.card-body { padding: 9px 10px 10px; }
-.card-title { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.35; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.card-meta { font-size: 10px; color: var(--text-muted); margin-bottom: 5px; }
-.card-providers { display: flex; gap: 3px; flex-wrap: wrap; }
-.cprov { border-radius: 4px; padding: 2px 5px; font-size: 8px; color: #fff; font-weight: 800; }
+@media (hover: hover) { .card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.6); } }
+.card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.card-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 36px; background: var(--surface2); }
+.card-gradient { position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, transparent 100%); }
+.card-body { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px; }
+.card-title { font-size: 12px; font-weight: 600; color: #fff; line-height: 1.3; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.card-score { font-size: 10px; font-weight: 700; color: #ffd60a; }
+.card-seasons { font-size: 10px; color: rgba(255,255,255,0.6); }
+.card-badges { position: absolute; top: 8px; left: 8px; display: flex; gap: 4px; flex-wrap: wrap; max-width: 80%; }
+.card-badge { border-radius: 4px; padding: 2px 6px; font-size: 8px; color: #fff; font-weight: 800; }
+.status-dot { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.15); }
 
-.modal-overlay { position: fixed; inset: 0; background: rgba(20,30,60,0.35); backdrop-filter: blur(8px); z-index: 500; display: flex; align-items: flex-end; justify-content: center; }
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(12px); z-index: 500; display: flex; align-items: flex-end; justify-content: center; }
 @media (min-width: 600px) { .modal-overlay { align-items: center; } }
-.modal { background: linear-gradient(160deg, #eef3ff, #e8eef7); border-radius: 24px 24px 0 0; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 20px; }
-@media (min-width: 600px) { .modal { border-radius: 24px; } }
-.modal-handle { width: 36px; height: 4px; background: rgba(0,0,0,0.12); border-radius: 2px; margin: 0 auto 18px; }
-.modal-row { display: flex; gap: 14px; margin-bottom: 16px; }
-.modal-poster { width: 85px; flex-shrink: 0; border-radius: 12px; overflow: hidden; }
+.modal { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; padding: 20px; border: 1px solid var(--border); }
+@media (min-width: 600px) { .modal { border-radius: 20px; } }
+.modal-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 0 auto 18px; }
+.modal-row { display: flex; gap: 16px; margin-bottom: 18px; }
+.modal-poster { width: 90px; flex-shrink: 0; border-radius: 10px; overflow: hidden; }
 .modal-poster img { width: 100%; display: block; }
-.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 5px; }
-.modal-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
-.modal-overview { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-.status-btns { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
-.sbtn { padding: 8px 14px; border-radius: var(--pill); border: 2px solid rgba(0,0,0,0.08); font-size: 12px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.6); color: var(--text-muted); transition: all 0.15s; }
-.sbtn.active { color: #fff; border-color: transparent; }
-.seasons-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
-.season-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 13px; background: rgba(255,255,255,0.65); border-radius: 12px; margin-bottom: 7px; }
-.season-label { font-size: 13px; font-weight: 600; }
+.modal-poster-placeholder { width: 90px; height: 135px; background: var(--surface2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+.modal-info { flex: 1; min-width: 0; }
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 5px; line-height: 1.3; }
+.modal-scores { display: flex; gap: 10px; margin-bottom: 6px; align-items: center; }
+.modal-score-item { font-size: 12px; }
+.modal-score-label { color: var(--text-muted); font-size: 10px; }
+.modal-genres { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+.modal-overview { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+.status-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; margin-top: 4px; }
+.sbtn { padding: 8px 16px; border-radius: var(--pill); border: 1px solid var(--border); font-size: 13px; font-weight: 500; cursor: pointer; background: var(--surface2); color: var(--text-muted); transition: all 0.15s; }
+.sbtn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.sbtn.active { color: #000; border-color: transparent; font-weight: 600; }
+.seasons-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+.season-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface2); border-radius: 10px; margin-bottom: 6px; border: 1px solid var(--border); }
+.season-label { font-size: 13px; font-weight: 500; }
+.season-eps { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
 .season-btns { display: flex; gap: 5px; }
-.season-btn { padding: 5px 10px; border-radius: var(--pill); border: 1.5px solid rgba(0,0,0,0.08); font-size: 11px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.6); color: var(--text-muted); transition: all 0.15s; }
-.season-btn.active { color: #fff; }
+.season-btn { padding: 5px 10px; border-radius: var(--pill); border: 1px solid var(--border); font-size: 11px; font-weight: 500; cursor: pointer; background: transparent; color: var(--text-muted); transition: all 0.15s; }
+.season-btn.active { color: #000; border-color: transparent; font-weight: 600; }
 
-.chat-fab { position: fixed; bottom: 22px; right: 18px; width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 22px; border: none; cursor: pointer; box-shadow: 0 4px 18px rgba(91,110,245,0.35); z-index: 300; display: flex; align-items: center; justify-content: center; }
-.chat-overlay { position: fixed; inset: 0; z-index: 400; display: none; align-items: flex-end; justify-content: center; background: rgba(20,30,60,0.25); backdrop-filter: blur(5px); }
-.chat-panel { background: linear-gradient(160deg, #eef3ff, #e8eef7); border-radius: 24px 24px 0 0; width: 100%; max-width: 560px; height: 68vh; display: flex; flex-direction: column; padding: 14px; }
-.chat-handle { width: 36px; height: 4px; background: rgba(0,0,0,0.12); border-radius: 2px; margin: 0 auto 12px; }
-.chat-msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; }
+/* Chat */
+.chat-fab { position: fixed; bottom: 22px; right: 20px; width: 52px; height: 52px; border-radius: 50%; background: #fff; color: #000; font-size: 20px; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 300; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
+.chat-fab:hover { transform: scale(1.05); }
+.chat-overlay { position: fixed; inset: 0; z-index: 400; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); }
+.chat-panel { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 560px; height: 68vh; display: flex; flex-direction: column; padding: 14px; border: 1px solid var(--border); border-bottom: none; }
+.chat-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 0 auto 12px; }
+.chat-msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .msg { display: flex; }
 .msg.user { justify-content: flex-end; }
-.bubble { max-width: 86%; border-radius: 16px; padding: 9px 13px; font-size: 14px; line-height: 1.5; }
-.msg.user .bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
-.msg.assistant .bubble { background: rgba(255,255,255,0.82); color: var(--text); border-bottom-left-radius: 4px; }
+.bubble { max-width: 85%; border-radius: 16px; padding: 9px 13px; font-size: 14px; line-height: 1.5; }
+.msg.user .bubble { background: #fff; color: #000; border-bottom-right-radius: 4px; }
+.msg.assistant .bubble { background: var(--surface2); color: var(--text); border-bottom-left-radius: 4px; border: 1px solid var(--border); }
 .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
-.chat-input { flex: 1; padding: 11px 15px; border-radius: var(--pill); border: 1.5px solid rgba(255,255,255,0.8); background: rgba(255,255,255,0.8); font-size: 15px; color: var(--text); outline: none; }
-.chat-send { background: var(--accent); border: none; border-radius: 50%; width: 42px; height: 42px; color: #fff; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+.chat-input { flex: 1; padding: 11px 15px; border-radius: var(--pill); border: 1px solid var(--border); background: var(--surface2); font-size: 15px; color: var(--text); outline: none; }
+.chat-input::placeholder { color: var(--text-muted); }
+.chat-input:focus { border-color: rgba(255,255,255,0.3); }
+.chat-send { background: #fff; border: none; border-radius: 50%; width: 42px; height: 42px; color: #000; font-size: 18px; cursor: pointer; flex-shrink: 0; transition: opacity 0.2s; }
+.chat-send:disabled { opacity: 0.4; }
 
-.loader { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; gap: 14px; }
-.spinner { width: 34px; height: 34px; border: 3px solid rgba(91,110,245,0.2); border-top: 3px solid var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+/* Loader */
+.loader { display: flex; flex-direction: column; align-items: center; padding: 80px 20px; gap: 14px; }
+.spinner { width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.1); border-top: 2px solid #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loader-msg { font-size: 13px; color: var(--text-muted); }
-.empty { text-align: center; padding: 50px 20px; color: var(--text-muted); }
-.empty-icon { font-size: 44px; margin-bottom: 10px; }
-
-.load-more { display: block; width: 100%; max-width: 300px; margin: 20px auto 0; padding: 12px; background: var(--glass); border: 1.5px solid var(--glass-border); border-radius: var(--pill); font-size: 14px; font-weight: 600; color: var(--accent); cursor: pointer; text-align: center; }
+.empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty-icon { font-size: 44px; margin-bottom: 10px; opacity: 0.4; }
 </style>
 </head>
 <body>
 
 <header>
   <div class="header-top">
-    <div class="logo">Stream<span>Board</span></div>
-    <div style="display:flex;gap:8px">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="7" height="10" rx="1.5" fill="#000"/>
+          <rect x="10" y="1" width="7" height="6" rx="1.5" fill="#000"/>
+          <rect x="10" y="9" width="7" height="8" rx="1.5" fill="#000"/>
+          <rect x="1" y="13" width="7" height="4" rx="1.5" fill="#000"/>
+        </svg>
+      </div>
+      <div class="logo-text">Stream<span>Board</span></div>
+    </div>
+    <div class="header-actions">
       <button class="icon-btn" id="search-btn">&#128269;</button>
     </div>
   </div>
   <div class="status-tabs" id="status-tabs">
-    <div class="stab" data-tab="browse">&#127916; Entdecken</div>
-    <div class="stab" data-tab="want">&#128278; Will ich sehen</div>
-    <div class="stab" data-tab="watching">&#9681; Angefangen</div>
-    <div class="stab" data-tab="aborted">&#10005; Abgebrochen</div>
-    <div class="stab" data-tab="done">&#9989; Gesehen</div>
+    <div class="stab" data-tab="browse">Entdecken</div>
+    <div class="stab" data-tab="want">Will ich sehen</div>
+    <div class="stab" data-tab="watching">Angefangen</div>
+    <div class="stab" data-tab="aborted">Abgebrochen</div>
+    <div class="stab" data-tab="done">Gesehen</div>
   </div>
 </header>
 
-<div id="provider-bar" class="provider-bar" style="display:none"></div>
-<div id="type-bar" class="type-bar" style="display:none">
+<div id="provider-bar" class="sub-bar" style="display:none"></div>
+<div id="type-bar" class="sub-bar" style="display:none">
   <button class="typebtn active" data-type="all">Alle</button>
   <button class="typebtn" data-type="series">Serien</button>
   <button class="typebtn" data-type="movie">Filme</button>
 </div>
-<div id="search-bar" class="search-wrap" style="display:none">
-  <input class="search-input" id="search-input" placeholder="Titel suchen...">
+<div id="sort-bar" class="sort-bar" style="display:none">
+  <span class="sort-label">Sortierung</span>
+  <select class="sort-select" id="sort-select">
+    <option value="updated">Zuletzt bearbeitet</option>
+    <option value="score">Bewertung</option>
+    <option value="title">Titel A-Z</option>
+    <option value="year">Jahr</option>
+    <option value="popular">Popularität</option>
+  </select>
 </div>
+<div id="search-bar" class="search-wrap" style="display:none">
+  <input class="search-input" id="search-input" placeholder="Serien oder Filme suchen...">
+</div>
+
 <main id="main"></main>
 
 <button class="chat-fab" id="chat-fab">&#128172;</button>
+
 <div class="chat-overlay" id="chat-overlay">
   <div class="chat-panel">
     <div class="chat-handle"></div>
     <div class="chat-msgs" id="chat-msgs">
-      <div class="msg assistant"><div class="bubble">Hey! Sag mir was du geguckt hast oder frag nach Empfehlungen. z.B. "Hab Succession fertig" oder "Was laeuft auf WOW?"</div></div>
+      <div class="msg assistant"><div class="bubble">Hey! Sag mir was du geguckt hast oder frag nach Empfehlungen.</div></div>
     </div>
     <div class="chat-input-row">
       <input class="chat-input" id="chat-input" placeholder="Nachricht...">
-      <button class="chat-send" id="chat-send">&#8593;</button>
+      <button class="chat-send" id="chat-send" disabled>&#8593;</button>
     </div>
   </div>
 </div>
@@ -162,52 +220,53 @@ main { padding: 12px 16px 100px; }
 <script>
 var SUPABASE_URL = "https://fmlinbvtvjacitrvetmb.supabase.co";
 var SUPABASE_KEY = "sb_publishable_pVVXVBPplJqarZ_RYbcy0A_OgjXPHOz";
+var TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZmJiZmZjN2FjYiIsIm5iZiI6MTc3ODQyNDczMy42NjUsInN1YiI6IjZhMDA5YjlkM2U5ODRiOTM2NmVjMjBhNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-dkvM50nAGc7oQjIqTfgDcGKV--lvti4DY2tRl7MHu0";
 var CLAUDE_API = "https://api.anthropic.com/v1/messages";
 var API = "/api/justwatch";
 
 var PROVIDERS = [
-  { slug:"nfx", name:"Netflix",      color:"#E50914" },
-  { slug:"amp", name:"Amazon Prime", color:"#00A8E0" },
-  { slug:"dnp", name:"Disney+",      color:"#113CCF" },
-  { slug:"atp", name:"Apple TV+",    color:"#1C1C1E" },
-  { slug:"sko", name:"WOW",          color:"#FF6B35" },
-  { slug:"mxx", name:"HBO Max",      color:"#5822B4" },
-  { slug:"tvn", name:"RTL+",         color:"#E4002B" },
-  { slug:"jyn", name:"Joyn",         color:"#00C896" }
+  {slug:"nfx", name:"Netflix",      color:"#E50914"},
+  {slug:"amp", name:"Amazon Prime", color:"#00A8E0"},
+  {slug:"dnp", name:"Disney+",      color:"#113CCF"},
+  {slug:"atp", name:"Apple TV+",    color:"#555"},
+  {slug:"sko", name:"WOW",          color:"#FF6B35"},
+  {slug:"mxx", name:"HBO Max",      color:"#5822B4"},
+  {slug:"tvn", name:"RTL+",         color:"#E4002B"},
+  {slug:"jyn", name:"Joyn",         color:"#00C896"}
 ];
 
 var STATUS = {
-  want:     { label:"Will ich sehen", icon:"&#128278;", color:"#a78bfa" },
-  watching: { label:"Angefangen",     icon:"&#9681;",   color:"#f5a623" },
-  aborted:  { label:"Abgebrochen",    icon:"&#10005;",  color:"#ef4444" },
-  done:     { label:"Gesehen",        icon:"&#9989;",   color:"#22c55e" }
+  want:     {label:"Will ich sehen", color:"#bf5af2"},
+  watching: {label:"Angefangen",     color:"#ff9f0a"},
+  aborted:  {label:"Abgebrochen",    color:"#ff453a"},
+  done:     {label:"Gesehen",        color:"#32d74b"}
+};
+
+var TAB_COLORS = {
+  browse: "#fff", want: "#bf5af2", watching: "#ff9f0a", aborted: "#ff453a", done: "#32d74b"
 };
 
 var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 var currentTab = "browse";
 var currentSlug = "nfx";
 var currentType = "all";
+var currentSort = "updated";
 var userStatuses = {};
 var seasonStatuses = {};
 var itemStore = {};
 var chatHistory = [];
 var searchTimer;
 
-function api(params) {
-  var qs = Object.keys(params).map(k => k + "=" + encodeURIComponent(params[k])).join("&");
-  return fetch(API + "?" + qs).then(r => r.json());
-}
-
 function setLoading(msg) {
   document.getElementById("main").innerHTML = "<div class=\"loader\"><div class=\"spinner\"></div><div class=\"loader-msg\">" + (msg||"Laden...") + "</div></div>";
 }
 
 function setEmpty(icon, msg) {
-  document.getElementById("main").innerHTML = "<div class=\"empty\"><div class=\"empty-icon\">" + icon + "</div>" + msg + "</div>";
+  document.getElementById("main").innerHTML = "<div class=\"empty\"><div class=\"empty-icon\">" + icon + "</div><div>" + msg + "</div></div>";
 }
 
 function scoreColor(s) {
-  return s >= 7 ? "#22c55e" : s >= 5 ? "#f5a623" : "#ef4444";
+  return s >= 7 ? "#32d74b" : s >= 5 ? "#ff9f0a" : "#ff453a";
 }
 
 function cardHTML(item) {
@@ -216,28 +275,32 @@ function cardHTML(item) {
   var sk = key + "-" + Math.random().toString(36).slice(2);
   itemStore[sk] = item;
   var score = item.imdbScore || item.tmdbScore;
-  var scoreStr = score ? score.toFixed(1) : "";
+  var seasons = item.seasons && item.seasons.length ? item.seasons.length + " Staffel" + (item.seasons.length > 1 ? "n" : "") : "";
+  var statusCfg = status !== "none" && STATUS[status] ? STATUS[status] : null;
+
   var poster = item.poster
     ? "<img src=\"" + item.poster + "\" alt=\"\" loading=\"lazy\">"
-    : "<div class=\"poster-placeholder\">&#127916;</div>";
-  var statusIcon = status !== "none" && STATUS[status] ? STATUS[status].icon : "";
-  var seasons = item.seasons && item.seasons.length ? item.seasons.length + " Staffel" + (item.seasons.length > 1 ? "n" : "") : "";
-  var provTags = item.providers.slice(0,3).map(p => {
-    var prov = PROVIDERS.find(x => x.slug === p.slug);
-    var col = prov ? prov.color : "#888";
-    return "<span class=\"cprov\" style=\"background:" + col + "\">" + p.name + "</span>";
-  }).join("");
+    : "<div class=\"card-placeholder\">&#127916;</div>";
+
+  var badges = item.providers && item.providers.length
+    ? item.providers.slice(0,2).map(function(p) {
+        var prov = PROVIDERS.find(function(x) { return x.slug === p.slug; });
+        var col = prov ? prov.color : "#333";
+        return "<span class=\"card-badge\" style=\"background:" + col + "\">" + p.name + "</span>";
+      }).join("")
+    : "";
 
   var html = "<div class=\"card\" data-sk=\"" + sk + "\">";
-  html += "<div class=\"poster\">" + poster;
-  if (scoreStr) html += "<div class=\"score\" style=\"color:" + scoreColor(score) + "\">&#9733; " + scoreStr + "</div>";
-  if (statusIcon) html += "<div class=\"status-dot\">" + statusIcon + "</div>";
-  html += "</div>";
+  html += poster;
+  html += "<div class=\"card-gradient\"></div>";
+  if (badges) html += "<div class=\"card-badges\">" + badges + "</div>";
+  if (statusCfg) html += "<div class=\"status-dot\" style=\"border-color:" + statusCfg.color + "\"></div>";
   html += "<div class=\"card-body\">";
-  html += "<div class=\"card-title\">" + item.title + "</div>";
-  html += "<div class=\"card-meta\">" + (item.year || "") + (seasons ? " &bull; " + seasons : "") + "</div>";
-  if (provTags) html += "<div class=\"card-providers\">" + provTags + "</div>";
-  html += "</div></div>";
+  html += "<div class=\"card-title\">" + (item.title || "") + "</div>";
+  html += "<div class=\"card-meta\">";
+  if (score) html += "<span class=\"card-score\" style=\"color:" + scoreColor(score) + "\">&#9733; " + score.toFixed(1) + "</span>";
+  if (seasons) html += "<span class=\"card-seasons\">" + seasons + "</span>";
+  html += "</div></div></div>";
   return html;
 }
 
@@ -250,46 +313,49 @@ function attachCards() {
   });
 }
 
-function renderGrid(items, title) {
-  if (!items || !items.length) { setEmpty("&#128269;", "Keine Ergebnisse"); return; }
-  var html = "";
-  if (title) html += "<div class=\"section-title\">" + title + "</div>";
-  html += "<div class=\"grid\">" + items.map(cardHTML).join("") + "</div>";
-  document.getElementById("main").innerHTML = html;
-  attachCards();
-}
-
 function renderProviderBar() {
   var bar = document.getElementById("provider-bar");
-  var html = PROVIDERS.map(p => {
+  bar.innerHTML = PROVIDERS.map(function(p) {
     var active = p.slug === currentSlug;
-    return "<div class=\"ppill\" data-slug=\"" + p.slug + "\" style=\"" + (active ? "background:" + p.color + ";color:#fff;border-color:" + p.color : "") + "\">" + p.name + "</div>";
+    return "<div class=\"ppill" + (active ? " active" : "") + "\" data-slug=\"" + p.slug + "\" style=\"" + (active ? "background:" + p.color + ";color:#fff" : "") + "\">" + p.name + "</div>";
   }).join("");
-  bar.innerHTML = html;
   bar.querySelectorAll(".ppill").forEach(function(pill) {
     pill.addEventListener("click", function() {
       currentSlug = this.getAttribute("data-slug");
       renderProviderBar();
-      loadBrowse();
+      if (currentTab === "browse") loadBrowse();
     });
   });
 }
 
+function applySort(items) {
+  var sorted = items.slice();
+  if (currentSort === "score") sorted.sort(function(a,b) { return (b.imdbScore||b.tmdbScore||0) - (a.imdbScore||a.tmdbScore||0); });
+  else if (currentSort === "title") sorted.sort(function(a,b) { return (a.title||"").localeCompare(b.title||""); });
+  else if (currentSort === "year") sorted.sort(function(a,b) { return (b.year||0) - (a.year||0); });
+  return sorted;
+}
+
 function loadBrowse() {
-  setLoading("Lade " + (PROVIDERS.find(p => p.slug === currentSlug) || {name:"Titel"}).name + "...");
-  api({ action:"popular", slug: currentSlug, type: currentType }).then(function(data) {
-    var items = data.items || [];
-    var prov = PROVIDERS.find(p => p.slug === currentSlug);
-    renderGrid(items, (prov ? "Top auf " + prov.name : "Top Titel") + " (" + (data.total || items.length) + ")");
-  }).catch(function(e) { setEmpty("&#9888;&#65039;", "Fehler: " + e.message); });
+  setLoading("Lade...");
+  fetch(API + "?action=popular&slug=" + currentSlug + "&type=" + currentType).then(function(r) { return r.json(); }).then(function(data) {
+    var items = applySort(data.items || []);
+    var prov = PROVIDERS.find(function(p) { return p.slug === currentSlug; });
+    var html = "<div class=\"section-title\">Top auf " + (prov ? prov.name : "") + " <span style=\"color:var(--text-muted);font-size:14px;font-weight:400\">(" + (data.total || items.length) + ")</span></div>";
+    html += "<div class=\"grid\">" + items.map(cardHTML).join("") + "</div>";
+    document.getElementById("main").innerHTML = html;
+    attachCards();
+  }).catch(function(e) { setEmpty("&#9888;", "Fehler: " + e.message); });
 }
 
 function loadMyList(status) {
-  setLoading("Lade Liste...");
-  sb.from("watch_status").select("*, titles(*)").eq("status", status).then(function(r) {
+  setLoading("Lade...");
+  var query = sb.from("watch_status").select("*, titles(*)").eq("status", status);
+  if (currentSort === "updated") query = query.order("updated_at", {ascending: false});
+  query.then(function(r) {
     var data = r.data || [];
-    if (!data.length) { setEmpty(STATUS[status].icon, STATUS[status].label + " ist leer"); return; }
-    var items = data.filter(r => r.titles).map(function(r) {
+    if (!data.length) { setEmpty("&#8212;", STATUS[status].label + " ist leer"); return; }
+    var items = data.filter(function(r) { return r.titles; }).map(function(r) {
       var t = r.titles;
       return {
         id: t.tmdb_id || r.title_id,
@@ -299,71 +365,76 @@ function loadMyList(status) {
         overview: t.overview || "",
         imdbScore: t.vote_average || null,
         tmdbScore: null,
+        year: t.year || null,
         genres: [],
         providers: [],
-        seasons: []
+        seasons: [],
+        updated_at: r.updated_at
       };
     });
-    renderGrid(items, STATUS[status].label + " (" + items.length + ")");
+    if (currentSort === "score") items = applySort(items);
+    else if (currentSort === "title") items = applySort(items);
+    else if (currentSort === "year") items = applySort(items);
+    var html = "<div class=\"section-title\">" + STATUS[status].label + " <span style=\"color:var(--text-muted);font-size:14px;font-weight:400\">(" + items.length + ")</span></div>";
+    html += "<div class=\"grid\">" + items.map(cardHTML).join("") + "</div>";
+    document.getElementById("main").innerHTML = html;
+    attachCards();
   });
 }
 
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll(".stab").forEach(function(t) {
-    var colors = {browse:"var(--accent)", want:"var(--want)", watching:"var(--watching)", aborted:"var(--aborted)", done:"var(--done)"};
     var active = t.getAttribute("data-tab") === tab;
-    t.style.background = active ? colors[tab] : "";
-    t.style.color = active ? "#fff" : "";
-    t.style.borderColor = active ? colors[tab] : "transparent";
+    t.className = "stab" + (active ? " active" : "");
+    t.style.background = active ? TAB_COLORS[tab] : "";
+    t.style.color = active ? (tab === "browse" ? "#000" : "#000") : "";
+    t.style.borderColor = active ? "transparent" : "";
   });
-  document.getElementById("provider-bar").style.display = tab === "browse" ? "flex" : "none";
-  document.getElementById("type-bar").style.display = tab === "browse" ? "flex" : "none";
-  if (tab === "browse") loadBrowse();
+  var isBrowse = tab === "browse";
+  document.getElementById("provider-bar").style.display = isBrowse ? "flex" : "none";
+  document.getElementById("type-bar").style.display = isBrowse ? "flex" : "none";
+  document.getElementById("sort-bar").style.display = "flex";
+  if (isBrowse) loadBrowse();
   else loadMyList(tab);
 }
 
 function openModal(item) {
   var key = item.type + "-" + item.id;
   var status = userStatuses[key] || "none";
+  var score = item.imdbScore || item.tmdbScore;
+  var tmdbScore = item.tmdbScore;
   var poster = item.poster
     ? "<img src=\"" + item.poster + "\" alt=\"\">"
-    : "<div style=\"height:120px;background:rgba(0,0,0,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:32px\">&#127916;</div>";
-  var score = item.imdbScore || item.tmdbScore;
-  var meta = [item.year, score ? "&#9733; " + score.toFixed(1) : "", (item.genres||[]).join(", ")].filter(Boolean).join(" &bull; ");
+    : null;
 
   var statusBtns = Object.keys(STATUS).map(function(s) {
     var cfg = STATUS[s];
     var active = status === s;
-    return "<button class=\"sbtn" + (active ? " active" : "") + "\" data-s=\"" + s + "\" style=\"" + (active ? "background:" + cfg.color : "") + "\">" + cfg.icon + " " + cfg.label + "</button>";
+    return "<button class=\"sbtn" + (active ? " active" : "") + "\" data-s=\"" + s + "\" style=\"" + (active ? "background:" + cfg.color + ";border-color:transparent" : "") + "\">" + cfg.label + "</button>";
   }).join("");
 
-  var seasonHtml = "";
-  if (item.seasons && item.seasons.length) {
-    seasonHtml += "<div class=\"seasons-title\">Staffeln</div>";
-    item.seasons.forEach(function(s) {
-      var ss = seasonStatuses[key] && seasonStatuses[key][s.number] ? seasonStatuses[key][s.number] : "none";
-      seasonHtml += "<div class=\"season-row\">";
-      seasonHtml += "<div class=\"season-label\">Staffel " + s.number + (s.episodes ? " <span style=\"font-weight:400;font-size:11px;color:var(--text-muted)\">(" + s.episodes + " Eps.)</span>" : "") + "</div>";
-      seasonHtml += "<div class=\"season-btns\">";
-      Object.keys(STATUS).forEach(function(sv) {
-        var cfg = STATUS[sv];
-        var active = ss === sv;
-        seasonHtml += "<button class=\"season-btn" + (active ? " active" : "") + "\" data-sn=\"" + s.number + "\" data-sv=\"" + sv + "\" style=\"" + (active ? "background:" + cfg.color + ";color:#fff;border-color:" + cfg.color : "") + "\">" + cfg.icon + "</button>";
-      });
-      seasonHtml += "</div></div>";
-    });
-  }
+  var scores = "";
+  if (score) scores += "<div class=\"modal-score-item\"><div class=\"modal-score-label\">IMDb</div><div style=\"color:#ffd60a;font-weight:700\">&#9733; " + score.toFixed(1) + "</div></div>";
+  if (tmdbScore && tmdbScore !== score) scores += "<div class=\"modal-score-item\"><div class=\"modal-score-label\">Publikum</div><div style=\"color:#32d74b;font-weight:700\">" + Math.round(tmdbScore * 10) + "%</div></div>";
 
   var html = "<div class=\"modal-handle\"></div>";
   html += "<div class=\"modal-row\">";
-  html += "<div class=\"modal-poster\">" + poster + "</div>";
-  html += "<div><div class=\"modal-title\">" + item.title + "</div>";
-  html += "<div class=\"modal-meta\">" + meta + "</div>";
-  if (item.overview) html += "<div class=\"modal-overview\">" + item.overview.slice(0,200) + (item.overview.length > 200 ? "..." : "") + "</div>";
+  html += poster ? "<div class=\"modal-poster\">" + poster + "</div>" : "<div class=\"modal-poster-placeholder\">&#127916;</div>";
+  html += "<div class=\"modal-info\">";
+  html += "<div class=\"modal-title\">" + (item.title || "") + "</div>";
+  if (scores) html += "<div class=\"modal-scores\">" + scores + "</div>";
+  if (item.genres && item.genres.length) html += "<div class=\"modal-genres\">" + item.genres.join(" &bull; ") + "</div>";
   html += "</div></div>";
   html += "<div class=\"status-btns\">" + statusBtns + "</div>";
-  html += seasonHtml;
+  if (item.overview) html += "<p style=\"font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:18px\">" + item.overview.slice(0,500) + (item.overview.length > 500 ? "..." : "") + "</p>";
+  html += "<div id=\"seasons-container\">";
+  if (item.seasons && item.seasons.length) {
+    html += renderSeasons(item.seasons, key);
+  } else if (item.type === "series") {
+    html += "<div style=\"color:var(--text-muted);font-size:13px\">Lade Staffeln...</div>";
+  }
+  html += "</div>";
 
   document.getElementById("modal").innerHTML = html;
   document.getElementById("modal-overlay").style.display = "flex";
@@ -377,24 +448,91 @@ function openModal(item) {
         var active = bs === s;
         b.className = "sbtn" + (active ? " active" : "");
         b.style.background = active ? STATUS[bs].color : "";
-        b.style.color = active ? "#fff" : "";
+        b.style.borderColor = active ? "transparent" : "";
+        b.style.color = active ? "#000" : "";
       });
     });
   });
 
-  document.querySelectorAll(".season-btn").forEach(function(btn) {
+  if (item.type === "series" && (!item.seasons || !item.seasons.length)) {
+    fetch("https://api.themoviedb.org/3/tv/" + item.id + "?language=de-DE", {
+      headers: { Authorization: "Bearer " + TMDB_TOKEN }
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      var seasons = (d.seasons || []).filter(function(s) { return s.season_number > 0; }).map(function(s) {
+        return { number: s.season_number, episodes: s.episode_count };
+      });
+      item.seasons = seasons;
+      var sc = document.getElementById("seasons-container");
+      if (sc) sc.innerHTML = seasons.length ? renderSeasons(seasons, key) : "";
+      if (sc) attachSeasonBtns();
+    }).catch(function() {
+      var sc = document.getElementById("seasons-container");
+      if (sc) sc.innerHTML = "";
+    });
+  } else {
+    attachSeasonBtns();
+  }
+}
+
+function renderSeasons(seasons, key) {
+  var html = "<div class=\"seasons-title\">Staffeln</div>";
+  seasons.forEach(function(s) {
+    var ss = seasonStatuses[key] && seasonStatuses[key][s.number] ? seasonStatuses[key][s.number] : "none";
+    html += "<div class=\"season-row\">";
+    html += "<div><span class=\"season-label\">Staffel " + s.number + "</span>" + (s.episodes ? "<span class=\"season-eps\">(" + s.episodes + " Eps.)</span>" : "") + "</div>";
+    html += "<div class=\"season-btns\">";
+    Object.keys(STATUS).forEach(function(sv) {
+      var cfg = STATUS[sv];
+      var active = ss === sv;
+      html += "<button class=\"season-btn" + (active ? " active" : "") + "\" data-sn=\"" + s.number + "\" data-sv=\"" + sv + "\" style=\"" + (active ? "background:" + cfg.color + ";color:#000;border-color:transparent" : "") + "\">" + cfg.label.split(" ")[0] + "</button>";
+    });
+    html += "</div></div>";
+  });
+  return html;
+}
+
+function attachSeasonBtns() {
+  var modal = document.getElementById("modal");
+  if (!modal) return;
+  var key = null;
+  document.querySelectorAll(".sbtn").forEach(function(b) {
+    if (b.getAttribute("data-s")) {
+      var item = itemStore[Object.keys(itemStore).find(function(k) { return itemStore[k].title === document.querySelector(".modal-title") && document.querySelector(".modal-title"); })];
+    }
+  });
+  modal.querySelectorAll(".season-btn").forEach(function(btn) {
     btn.addEventListener("click", function() {
       var sn = parseInt(this.getAttribute("data-sn"));
       var sv = this.getAttribute("data-sv");
-      setSeasonStatus(key, sn, sv);
+      var titleKey = null;
+      document.querySelectorAll(".sbtn").forEach(function(b) {
+        if (b.classList.contains("active") || true) {
+          var s = b.getAttribute("data-s");
+          if (s) {
+            var found = Object.keys(itemStore).find(function(k) {
+              return itemStore[k].title === (document.querySelector(".modal-title") ? document.querySelector(".modal-title").textContent : "");
+            });
+            if (found) titleKey = itemStore[found].type + "-" + itemStore[found].id;
+          }
+        }
+      });
+      if (!titleKey) {
+        var mt = document.querySelector(".modal-title");
+        if (mt) {
+          Object.keys(itemStore).forEach(function(k) {
+            if (itemStore[k].title === mt.textContent) titleKey = itemStore[k].type + "-" + itemStore[k].id;
+          });
+        }
+      }
+      if (titleKey) setSeasonStatus(titleKey, sn, sv);
       var row = this.closest(".season-row");
       row.querySelectorAll(".season-btn").forEach(function(b) {
         var bsv = b.getAttribute("data-sv");
         var active = bsv === sv;
         b.className = "season-btn" + (active ? " active" : "");
         b.style.background = active ? STATUS[bsv].color : "";
-        b.style.color = active ? "#fff" : "";
-        b.style.borderColor = active ? STATUS[bsv].color : "";
+        b.style.color = active ? "#000" : "";
+        b.style.borderColor = active ? "transparent" : "";
       });
     });
   });
@@ -402,34 +540,40 @@ function openModal(item) {
 
 function setStatus(key, status, item) {
   userStatuses[key] = status;
-  var parts = key.split("-");
-  var titleData = {
-    id: key,
-    tmdb_id: item.id,
-    media_type: item.type,
-    title: item.title,
-    poster_path: item.poster,
-    vote_average: item.imdbScore || item.tmdbScore,
-    overview: item.overview || null
-  };
+  if (currentTab !== "browse") {
+    document.querySelectorAll(".card").forEach(function(c) {
+      var sk = c.getAttribute("data-sk");
+      if (sk && itemStore[sk] && (itemStore[sk].type + "-" + itemStore[sk].id) === key) {
+        c.remove();
+      }
+    });
+    var header = document.querySelector(".section-title");
+    var grid = document.querySelector(".grid");
+    if (header && grid) {
+      var count = grid.querySelectorAll(".card").length;
+      header.innerHTML = header.innerHTML.replace(/\([0-9]+\)/, "(" + count + ")");
+    }
+  } else {
+    document.querySelectorAll(".card").forEach(function(c) {
+      var sk = c.getAttribute("data-sk");
+      if (sk && itemStore[sk] && (itemStore[sk].type + "-" + itemStore[sk].id) === key) {
+        var dot = c.querySelector(".status-dot");
+        if (status !== "none") {
+          if (!dot) {
+            dot = document.createElement("div");
+            dot.className = "status-dot";
+            c.appendChild(dot);
+          }
+          dot.style.borderColor = STATUS[status].color;
+        } else if (dot) {
+          dot.remove();
+        }
+      }
+    });
+  }
+  var titleData = { id: key, tmdb_id: item.id, media_type: item.type, title: item.title, poster_path: item.poster, vote_average: item.imdbScore || item.tmdbScore || null, overview: item.overview || null };
   sb.from("titles").upsert(titleData, {onConflict:"id"}).then(function() {
     sb.from("watch_status").upsert({title_id: key, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id"});
-  });
-  document.querySelectorAll(".card").forEach(function(card) {
-    var sk = card.getAttribute("data-sk");
-    if (sk && itemStore[sk] && itemStore[sk].id == item.id) {
-      var dot = card.querySelector(".status-dot");
-      if (status !== "none") {
-        var icon = STATUS[status].icon;
-        if (dot) dot.innerHTML = icon;
-        else {
-          var d = document.createElement("div");
-          d.className = "status-dot";
-          d.innerHTML = icon;
-          card.querySelector(".poster").appendChild(d);
-        }
-      } else if (dot) dot.remove();
-    }
   });
 }
 
@@ -467,33 +611,37 @@ function sendChat() {
   input.value = "";
   addMsg("user", msg);
   chatHistory.push({role:"user", content:msg});
+  document.getElementById("chat-send").disabled = true;
+
   var thinking = document.createElement("div");
   thinking.className = "msg assistant";
   thinking.innerHTML = "<div class=\"bubble\">...</div>";
   document.getElementById("chat-msgs").appendChild(thinking);
 
   var summary = Object.keys(userStatuses).slice(0,60).map(function(id) { return id + ":" + userStatuses[id]; }).join(", ");
-  var system = "Du bist Assistent fuer ein Streaming-Dashboard. Status: want, watching, aborted, done. Bei Statusaenderung antworte mit XML: <status_update>{id, status}</status_update>. Aktuelle Status: " + summary + ". Antworte auf Deutsch, kurz.";
+  var system = "Du bist Assistent fuer ein Streaming-Dashboard. Status: want, watching, aborted, done. Bei Statusaenderung: <status_update>{id, status}</status_update>. Status: " + summary + ". Antworte auf Deutsch, kurz.";
 
   fetch(CLAUDE_API, {
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({model:"claude-sonnet-4-20250514", max_tokens:600, system:system, messages:chatHistory})
-  }).then(r => r.json()).then(function(data) {
+  }).then(function(r) { return r.json(); }).then(function(data) {
     var text = data.content && data.content[0] ? data.content[0].text : "Keine Antwort.";
     var regex = /<status_update>([^<]+)<\/status_update>/g;
     var match;
     while ((match = regex.exec(text)) !== null) {
-      try {
-        var u = JSON.parse(match[1].trim());
-        if (u.id && u.status) userStatuses[u.id] = u.status;
-      } catch(e) {}
+      try { var u = JSON.parse(match[1].trim()); if (u.id && u.status) userStatuses[u.id] = u.status; } catch(e) {}
     }
     var clean = text.replace(/<status_update>[^<]+<\/status_update>/g, "").trim();
     chatHistory.push({role:"assistant", content:clean});
     thinking.remove();
     addMsg("assistant", clean);
-  }).catch(function() { thinking.remove(); addMsg("assistant", "Verbindungsfehler."); });
+    document.getElementById("chat-send").disabled = false;
+  }).catch(function() {
+    thinking.remove();
+    addMsg("assistant", "Verbindungsfehler.");
+    document.getElementById("chat-send").disabled = false;
+  });
 }
 
 // Events
@@ -510,6 +658,12 @@ document.querySelectorAll(".typebtn").forEach(function(btn) {
   });
 });
 
+document.getElementById("sort-select").addEventListener("change", function() {
+  currentSort = this.value;
+  if (currentTab === "browse") loadBrowse();
+  else loadMyList(currentTab);
+});
+
 document.getElementById("search-btn").addEventListener("click", function() {
   var bar = document.getElementById("search-bar");
   bar.style.display = bar.style.display === "none" ? "block" : "none";
@@ -522,20 +676,26 @@ document.getElementById("search-input").addEventListener("input", function() {
   if (!val) { switchTab(currentTab); return; }
   searchTimer = setTimeout(function() {
     setLoading("Suche...");
-    api({action:"search", query:val}).then(function(items) { renderGrid(items, "Suchergebnisse"); });
+    fetch(API + "?action=search&query=" + encodeURIComponent(val)).then(function(r) { return r.json(); }).then(function(items) {
+      if (!items || !items.length) { setEmpty("&#128269;", "Keine Ergebnisse"); return; }
+      var html = "<div class=\"section-title\">Suchergebnisse <span style=\"color:var(--text-muted);font-size:14px;font-weight:400\">(" + items.length + ")</span></div>";
+      html += "<div class=\"grid\">" + items.map(cardHTML).join("") + "</div>";
+      document.getElementById("main").innerHTML = html;
+      attachCards();
+    });
   }, 500);
 });
 
 document.getElementById("chat-fab").addEventListener("click", function() {
   var o = document.getElementById("chat-overlay");
   o.style.display = o.style.display === "none" ? "flex" : "none";
+  if (o.style.display === "flex") document.getElementById("chat-send").disabled = false;
 });
 document.getElementById("chat-overlay").addEventListener("click", function(e) { if (e.target===this) this.style.display="none"; });
 document.getElementById("chat-send").addEventListener("click", sendChat);
 document.getElementById("chat-input").addEventListener("keydown", function(e) { if (e.key==="Enter") sendChat(); });
 document.getElementById("modal-overlay").addEventListener("click", function(e) { if (e.target===this) this.style.display="none"; });
 
-// Init
 loadStatuses();
 renderProviderBar();
 switchTab("browse");
