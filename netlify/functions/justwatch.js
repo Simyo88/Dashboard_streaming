@@ -44,7 +44,6 @@ const POPULAR_QUERY = `
             seasons {
               content(country: $country, language: $language) {
                 seasonNumber
-                numberOfEpisodes
               }
             }
           }
@@ -76,7 +75,6 @@ const SEARCH_QUERY = `
             seasons {
               content(country: $country, language: $language) {
                 seasonNumber
-                numberOfEpisodes
               }
             }
           }
@@ -98,7 +96,7 @@ function formatItem(node) {
     .filter(Boolean)
     .filter(s => s.seasonNumber > 0)
     .sort((a, b) => a.seasonNumber - b.seasonNumber)
-    .map(s => ({ number: s.seasonNumber, episodes: s.numberOfEpisodes || 0 }));
+    .map(s => ({ number: s.seasonNumber, episodes: null }));
 
   const poster = c.posterUrl
     ? c.posterUrl.replace("{profile}", "s332").replace("{format}", "jpg")
