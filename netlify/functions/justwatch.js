@@ -1,23 +1,10 @@
-const CORS_HEADERS = {
+const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZmJiZmZjN2FjYiIsIm5iZiI6MTc3ODQyNDczMy42NjUsInN1YiI6IjZhMDA5YjlkM2U5ODRiOTM2NmVjMjBhNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-dkvM50nAGc7oQjIqTfgDcGKV--lvti4DY2tRl7MHu0";
+
+const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
   "Content-Type": "application/json"
 };
-
-const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZmJiZmZjN2FjYiIsIm5iZiI6MTc3ODQyNDczMy42NjUsInN1YiI6IjZhMDA5YjlkM2U5ODRiOTM2NmVjMjBhNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-dkvM50nAGc7oQjIqTfgDcGKV--lvti4DY2tRl7MHu0";
-
-async function getTmdbPoster(title, type, year) {
-  try {
-    const t = type === "series" ? "tv" : "movie";
-    const url = "https://api.themoviedb.org/3/search/" + t + "?query=" + encodeURIComponent(title) + "&language=de-DE" + (year ? "&year=" + year : "");
-    const res = await fetch(url, { headers: { Authorization: "Bearer " + TMDB_TOKEN } });
-    const data = await res.json();
-    const result = (data.results || [])[0];
-    return result && result.poster_path ? "https://image.tmdb.org/t/p/w300" + result.poster_path : null;
-  } catch(e) {
-    return null;
-  }
-}
 
 async function jwQuery(query, variables) {
   const res = await fetch("https://apis.justwatch.com/graphql", {
@@ -44,7 +31,6 @@ const POPULAR_QUERY = `
           content(country: $country, language: $language) {
             title
             posterUrl
-            fullPath
             shortDescription
             scoring { imdbScore tmdbScore }
             genres { translation(language: $language) }
@@ -70,7 +56,7 @@ const POPULAR_QUERY = `
 
 const SEARCH_QUERY = `
   query Search($country: Country!, $language: Language!, $query: String!) {
-    searchTitles(searchInput: {query: $query}, country: $country, language: $language, first: 20) {
+    searchTitles(query: $query, country: $country, language: $language, first: 20) {
       edges {
         node {
           content(country: $country, language: $language) {
@@ -99,6 +85,19 @@ const SEARCH_QUERY = `
   }
 `;
 
+async function getTmdbPoster(title, type) {
+  try {
+    const t = type === "series" ? "tv" : "movie";
+    const url = "https://api.themoviedb.org/3/search/" + t + "?query=" + encodeURIComponent(title) + "&language=de-DE";
+    const res = await fetch(url, { headers: { Authorization: "Bearer " + TMDB_TOKEN } });
+    const data = await res.json();
+    const result = (data.results || [])[0];
+    return result && result.poster_path ? "https://image.tmdb.org/t/p/w300" + result.poster_path : null;
+  } catch(e) {
+    return null;
+  }
+}
+
 function formatItem(node) {
   const c = node.content || {};
   const flatrate = (node.offers || [])
@@ -113,20 +112,11 @@ function formatItem(node) {
     .sort((a, b) => a.seasonNumber - b.seasonNumber)
     .map(s => ({ number: s.seasonNumber, episodes: null }));
 
-  let poster = null;
-  if (c.posterUrl) {
-    const p = c.posterUrl
-      .replace("{profile}", "s332")
-      .replace("{format}", "jpg");
-    const path = p.startsWith("/") ? p : "/" + p;
-    poster = "/.netlify/functions/poster?path=" + encodeURIComponent(path);
-  }
-
   return {
     id: node.objectId,
     type: node.objectType === "SHOW" ? "series" : "movie",
     title: c.title || "",
-    poster,
+    poster: null,
     overview: c.shortDescription || "",
     imdbScore: c.scoring?.imdbScore || null,
     tmdbScore: c.scoring?.tmdbScore || null,
@@ -136,32 +126,38 @@ function formatItem(node) {
   };
 }
 
-exports.handler = async function(event) {
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers: CORS_HEADERS, body: "" };
+// Cloudflare Pages Functions export
+export async function onRequest(context) {
+  const { request } = context;
+  
+  if (request.method === "OPTIONS") {
+    return new Response("", { headers: CORS });
   }
 
-  const params = event.queryStringParameters || {};
-  const action = params.action || "popular";
-  const slug = params.slug || "nfx";
-  const type = params.type || "all";
-  const query = params.query || "";
+  const url = new URL(request.url);
+  const action = url.searchParams.get("action") || "popular";
+  const slug = url.searchParams.get("slug") || "nfx";
+  const type = url.searchParams.get("type") || "all";
+  const query = url.searchParams.get("query") || "";
 
   try {
     if (action === "search") {
       const data = await jwQuery(SEARCH_QUERY, { country: "DE", language: "de", query });
       if (data.errors) {
-        return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ error: data.errors[0].message, items: [] }) };
+        return new Response(JSON.stringify({ error: data.errors[0].message, items: [] }), { headers: CORS });
       }
       const edges = data?.data?.searchTitles?.edges || [];
       const items = edges.map(e => formatItem(e.node));
-      return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify(items) };
+      await Promise.all(items.map(async (item) => {
+        item.poster = await getTmdbPoster(item.title, item.type);
+      }));
+      return new Response(JSON.stringify(items), { headers: CORS });
     }
 
     const data = await jwQuery(POPULAR_QUERY, { country: "DE", language: "de", slugs: [slug] });
 
     if (data.errors) {
-      return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ items: [], total: 0, error: data.errors[0].message }) };
+      return new Response(JSON.stringify({ items: [], total: 0, error: data.errors[0].message }), { headers: CORS });
     }
 
     const edges = data?.data?.popularTitles?.edges || [];
@@ -171,24 +167,14 @@ exports.handler = async function(event) {
     if (type === "series") items = items.filter(i => i.type === "series");
     if (type === "movie") items = items.filter(i => i.type === "movie");
 
-    // Fetch TMDB posters for items without valid poster
-    await Promise.all(items.slice(0, 20).map(async (item) => {
-      if (!item.poster) {
-        item.poster = await getTmdbPoster(item.title, item.type, item.year);
-      }
+    // Fetch TMDB posters in parallel
+    await Promise.all(items.map(async (item) => {
+      item.poster = await getTmdbPoster(item.title, item.type);
     }));
 
-    return {
-      statusCode: 200,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ items, total })
-    };
+    return new Response(JSON.stringify({ items, total }), { headers: CORS });
 
   } catch(e) {
-    return {
-      statusCode: 500,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({ error: e.message, items: [], total: 0 })
-    };
+    return new Response(JSON.stringify({ error: e.message, items: [], total: 0 }), { status: 500, headers: CORS });
   }
-};
+}
