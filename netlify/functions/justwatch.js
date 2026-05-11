@@ -4,6 +4,21 @@ const CORS_HEADERS = {
   "Content-Type": "application/json"
 };
 
+const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZmJiZmZjN2FjYiIsIm5iZiI6MTc3ODQyNDczMy42NjUsInN1YiI6IjZhMDA5YjlkM2U5ODRiOTM2NmVjMjBhNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-dkvM50nAGc7oQjIqTfgDcGKV--lvti4DY2tRl7MHu0";
+
+async function getTmdbPoster(title, type, year) {
+  try {
+    const t = type === "series" ? "tv" : "movie";
+    const url = "https://api.themoviedb.org/3/search/" + t + "?query=" + encodeURIComponent(title) + "&language=de-DE" + (year ? "&year=" + year : "");
+    const res = await fetch(url, { headers: { Authorization: "Bearer " + TMDB_TOKEN } });
+    const data = await res.json();
+    const result = (data.results || [])[0];
+    return result && result.poster_path ? "https://image.tmdb.org/t/p/w300" + result.poster_path : null;
+  } catch(e) {
+    return null;
+  }
+}
+
 async function jwQuery(query, variables) {
   const res = await fetch("https://apis.justwatch.com/graphql", {
     method: "POST",
@@ -100,8 +115,11 @@ function formatItem(node) {
 
   let poster = null;
   if (c.posterUrl) {
-    const p = c.posterUrl.replace("{profile}", "s332").replace("{format}", "jpg");
-    poster = p.startsWith("http") ? p : "https://www.justwatch.com" + p;
+    const p = c.posterUrl
+      .replace("{profile}", "s332")
+      .replace("{format}", "jpg");
+    const path = p.startsWith("/") ? p : "/" + p;
+    poster = "/.netlify/functions/poster?path=" + encodeURIComponent(path);
   }
 
   return {
@@ -152,6 +170,13 @@ exports.handler = async function(event) {
 
     if (type === "series") items = items.filter(i => i.type === "series");
     if (type === "movie") items = items.filter(i => i.type === "movie");
+
+    // Fetch TMDB posters for items without valid poster
+    await Promise.all(items.slice(0, 20).map(async (item) => {
+      if (!item.poster) {
+        item.poster = await getTmdbPoster(item.title, item.type, item.year);
+      }
+    }));
 
     return {
       statusCode: 200,
