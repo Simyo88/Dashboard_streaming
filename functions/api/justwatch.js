@@ -102,7 +102,8 @@ function formatItem(node) {
   let poster = null;
   if (c.posterUrl) {
     const p = c.posterUrl.replace("{profile}", "s332").replace("{format}", "jpg");
-    poster = p.startsWith("http") ? p : "https://www.justwatch.com" + p;
+    const path = p.startsWith("/") ? p : "/" + p;
+    poster = "/api/poster?path=" + encodeURIComponent(path);
   }
 
   return {
