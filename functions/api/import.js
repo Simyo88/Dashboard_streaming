@@ -1,4 +1,16 @@
 const SUPABASE_URL = "https://fmlinbvtvjacitrvetmb.supabase.co";
+const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZmJiZmZjN2FjYiIsIm5iZiI6MTc3ODQyNDczMy42NjUsInN1YiI6IjZhMDA5YjlkM2U5ODRiOTM2NmVjMjBhNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-dkvM50nAGc7oQjIqTfgDcGKV--lvti4DY2tRl7MHu0";
+
+async function getTmdbPoster(title, type) {
+  try {
+    const t = type === "series" ? "tv" : "movie";
+    const url = "https://api.themoviedb.org/3/search/" + t + "?query=" + encodeURIComponent(title) + "&language=de-DE";
+    const res = await fetch(url, { headers: { Authorization: "Bearer " + TMDB_TOKEN } });
+    const data = await res.json();
+    const result = (data.results || [])[0];
+    return result && result.poster_path ? "https://image.tmdb.org/t/p/w300" + result.poster_path : null;
+  } catch(e) { return null; }
+}
 const SUPABASE_KEY = "sb_publishable_pVVXVBPplJqarZ_RYbcy0A_OgjXPHOz";
 
 const CORS = {
@@ -76,13 +88,19 @@ export async function onRequest(context) {
     return new Response("", { headers: CORS });
   }
 
-  const tasks = [
+  const allTasks = [
     ...LISTS.done_series.map(t => ({ title: t, type: "series", status: "done" })),
     ...LISTS.watching_series.map(t => ({ title: t, type: "series", status: "watching" })),
     ...LISTS.done_movies.map(t => ({ title: t, type: "movie", status: "done" })),
     ...LISTS.want.map(t => ({ title: t, type: null, status: "want" })),
     ...LISTS.sunday.map(t => ({ title: t, type: null, status: "want" })),
   ];
+
+  const url = new URL(context.request.url);
+  const batch = parseInt(url.searchParams.get("batch") || "0");
+  const batchSize = 30;
+  const tasks = allTasks.slice(batch * batchSize, (batch + 1) * batchSize);
+  const hasMore = (batch + 1) * batchSize < allTasks.length;
 
   const imported = [];
   const failed = [];
@@ -96,11 +114,7 @@ export async function onRequest(context) {
           const c = node.content || {};
           const mediaType = node.objectType === "SHOW" ? "series" : "movie";
           const id = mediaType + "-" + node.objectId;
-          let poster = null;
-          if (c.posterUrl) {
-            const p = c.posterUrl.replace("{profile}", "s332").replace("{format}", "jpg");
-            poster = p.startsWith("/") ? "https://www.justwatch.com" + p : p;
-          }
+          const poster = await getTmdbPoster(c.title || task.title, mediaType);
           await upsertToSupabase({
             id,
             tmdb_id: node.objectId,
@@ -124,7 +138,10 @@ export async function onRequest(context) {
   return new Response(JSON.stringify({
     success: imported.length,
     failed: failed.length,
-    total: tasks.length,
+    total: allTasks.length,
+    batch,
+    hasMore,
+    nextUrl: hasMore ? "/api/import?batch=" + (batch + 1) : null,
     failed_titles: failed
   }), { headers: CORS });
 }
