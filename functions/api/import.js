@@ -16,7 +16,7 @@ const LISTS = {
 
 async function jwSearch(query, type) {
   const gql = `query Search($country: Country!, $language: Language!, $query: String!) {
-    searchTitles(searchInput: {query: $query}, country: $country, language: $language, first: 3) {
+    searchTitles(query: $query, country: $country, language: $language, first: 3) {
       edges {
         node {
           content(country: $country, language: $language) {
