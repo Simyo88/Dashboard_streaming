@@ -26,33 +26,12 @@ const LISTS = {
   sunday: ["Als du mich sahst","One Day"]
 };
 
-async function jwSearch(query, type) {
-  const gql = `query Search($country: Country!, $language: Language!, $query: String!) {
-    searchTitles(query: $query, country: $country, language: $language, first: 3) {
-      edges {
-        node {
-          content(country: $country, language: $language) {
-            title posterUrl shortDescription scoring { imdbScore tmdbScore }
-          }
-          objectType objectId
-          offers(country: $country, platform: WEB) {
-            package { shortName clearName } monetizationType
-          }
-        }
-      }
-    }
-  }`;
-  const res = await fetch("https://apis.justwatch.com/graphql", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "User-Agent": "Mozilla/5.0" },
-    body: JSON.stringify({ query: gql, variables: { country: "DE", language: "de", query } })
-  });
+async function tmdbSearch(query, type) {
+  const t = type === "series" ? "tv" : type === "movie" ? "movie" : "multi";
+  const url = "https://api.themoviedb.org/3/search/" + t + "?query=" + encodeURIComponent(query) + "&language=de-DE";
+  const res = await fetch(url, { headers: { Authorization: "Bearer " + TMDB_TOKEN } });
   const data = await res.json();
-  const edges = data?.data?.searchTitles?.edges || [];
-  const filtered = type
-    ? edges.filter(e => type === "series" ? e.node.objectType === "SHOW" : e.node.objectType === "MOVIE")
-    : edges;
-  return filtered[0]?.node || null;
+  return (data.results || [])[0] || null;
 }
 
 async function upsertToSupabase(titleData, status) {
@@ -109,22 +88,22 @@ export async function onRequest(context) {
     const batch = tasks.slice(i, i + 5);
     await Promise.all(batch.map(async (task) => {
       try {
-        const node = await jwSearch(task.title, task.type);
-        if (node) {
-          const c = node.content || {};
-          const mediaType = node.objectType === "SHOW" ? "series" : "movie";
-          const id = mediaType + "-" + node.objectId;
-          const poster = await getTmdbPoster(c.title || task.title, mediaType);
+        const result = await tmdbSearch(task.title, task.type);
+        if (result) {
+          const mediaType = result.media_type || (task.type === "series" ? "tv" : task.type) || (result.name ? "tv" : "movie");
+          const normalType = mediaType === "tv" ? "series" : "movie";
+          const id = normalType + "-" + result.id;
+          const poster = result.poster_path ? "https://image.tmdb.org/t/p/w300" + result.poster_path : null;
           await upsertToSupabase({
             id,
-            tmdb_id: node.objectId,
-            media_type: mediaType,
-            title: c.title || task.title,
+            tmdb_id: result.id,
+            media_type: normalType,
+            title: result.title || result.name || task.title,
             poster_path: poster,
-            vote_average: c.scoring?.imdbScore || c.scoring?.tmdbScore || null,
-            overview: c.shortDescription || null
+            vote_average: result.vote_average || null,
+            overview: result.overview || null
           }, task.status);
-          imported.push({ id, title: c.title || task.title, status: task.status });
+          imported.push({ id, title: result.title || result.name || task.title, status: task.status });
         } else {
           failed.push({ title: task.title, reason: "Nicht gefunden" });
         }
