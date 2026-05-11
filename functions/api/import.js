@@ -35,24 +35,28 @@ async function tmdbSearch(query, type) {
 }
 
 async function upsertToSupabase(titleData, status) {
-  await fetch(`${SUPABASE_URL}/rest/v1/titles`, {
+  const r1 = await fetch(`${SUPABASE_URL}/rest/v1/titles`, {
     method: "POST",
     headers: {
       "apikey": SUPABASE_KEY,
       "Authorization": "Bearer " + SUPABASE_KEY,
       "Content-Type": "application/json",
-      "Prefer": "resolution=merge-duplicates"
+      "Prefer": "resolution=merge-duplicates,return=minimal"
     },
     body: JSON.stringify(titleData)
   });
+  if (!r1.ok) {
+    const err = await r1.text();
+    throw new Error("titles upsert failed: " + err);
+  }
 
-  await fetch(`${SUPABASE_URL}/rest/v1/watch_status`, {
+  const r2 = await fetch(`${SUPABASE_URL}/rest/v1/watch_status`, {
     method: "POST",
     headers: {
       "apikey": SUPABASE_KEY,
       "Authorization": "Bearer " + SUPABASE_KEY,
       "Content-Type": "application/json",
-      "Prefer": "resolution=merge-duplicates"
+      "Prefer": "resolution=merge-duplicates,return=minimal"
     },
     body: JSON.stringify({
       title_id: titleData.id,
@@ -60,6 +64,10 @@ async function upsertToSupabase(titleData, status) {
       updated_at: new Date().toISOString()
     })
   });
+  if (!r2.ok) {
+    const err = await r2.text();
+    throw new Error("watch_status upsert failed: " + err);
+  }
 }
 
 export async function onRequest(context) {
@@ -77,7 +85,7 @@ export async function onRequest(context) {
 
   const url = new URL(context.request.url);
   const batch = parseInt(url.searchParams.get("batch") || "0");
-  const batchSize = 30;
+  const batchSize = 15;
   const tasks = allTasks.slice(batch * batchSize, (batch + 1) * batchSize);
   const hasMore = (batch + 1) * batchSize < allTasks.length;
 
