@@ -7,6 +7,8 @@ const CORS = {
   "Content-Type": "application/json"
 };
 
+const PAGE_SIZE = 20;
+
 async function getSeasonCount(tmdbId) {
   try {
     const res = await fetch(
@@ -26,17 +28,24 @@ export async function onRequest(context) {
     return new Response("", { headers: CORS });
   }
 
-  // Alle Serien aus Supabase holen (nur media_type = series)
+  const url = new URL(context.request.url);
+  const offset = parseInt(url.searchParams.get("offset") || "0");
+
   const res = await fetch(
-    SUPABASE_URL + "/rest/v1/titles?media_type=eq.series&select=id,tmdb_id,title,season_count",
+    SUPABASE_URL + "/rest/v1/titles?media_type=eq.series&select=id,tmdb_id,title,season_count&offset=" + offset + "&limit=" + PAGE_SIZE,
     {
       headers: {
         "apikey": SUPABASE_KEY,
-        "Authorization": "Bearer " + SUPABASE_KEY
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Range-Unit": "items",
+        "Prefer": "count=exact"
       }
     }
   );
+
   const series = await res.json();
+  const totalHeader = res.headers.get("content-range");
+  const total = totalHeader ? parseInt(totalHeader.split("/")[1]) : null;
 
   if (!Array.isArray(series)) {
     return new Response(JSON.stringify({ error: "Supabase-Fehler", raw: series }), { headers: CORS });
@@ -46,43 +55,43 @@ export async function onRequest(context) {
   const skipped = [];
   const failed = [];
 
-  // Batch-Größe 15 (Cloudflare Subrequest-Limit)
-  for (let i = 0; i < series.length; i += 15) {
-    const batch = series.slice(i, i + 15);
-    await Promise.all(batch.map(async (row) => {
-      if (!row.tmdb_id) { failed.push({ id: row.id, reason: "Keine tmdb_id" }); return; }
-      const count = await getSeasonCount(row.tmdb_id);
-      if (count === null) { failed.push({ id: row.id, title: row.title, reason: "TMDB-Fehler" }); return; }
-      if (row.season_count === count) { skipped.push({ id: row.id, title: row.title, count }); return; }
+  await Promise.all(series.map(async (row) => {
+    if (!row.tmdb_id) { failed.push({ id: row.id, reason: "Keine tmdb_id" }); return; }
+    const count = await getSeasonCount(row.tmdb_id);
+    if (count === null) { failed.push({ id: row.id, title: row.title, reason: "TMDB-Fehler" }); return; }
+    if (row.season_count === count) { skipped.push({ id: row.id, title: row.title, count }); return; }
 
-      // In Supabase speichern
-      const upd = await fetch(
-        SUPABASE_URL + "/rest/v1/titles?id=eq." + encodeURIComponent(row.id),
-        {
-          method: "PATCH",
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": "Bearer " + SUPABASE_KEY,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ season_count: count })
-        }
-      );
-      if (upd.ok) {
-        updated.push({ id: row.id, title: row.title, count });
-      } else {
-        failed.push({ id: row.id, title: row.title, reason: "Update fehlgeschlagen" });
+    const upd = await fetch(
+      SUPABASE_URL + "/rest/v1/titles?id=eq." + encodeURIComponent(row.id),
+      {
+        method: "PATCH",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ season_count: count })
       }
-    }));
-    // Kurze Pause zwischen Batches
-    await new Promise(r => setTimeout(r, 300));
-  }
+    );
+    if (upd.ok) {
+      updated.push({ id: row.id, title: row.title, count });
+    } else {
+      failed.push({ id: row.id, title: row.title, reason: "Update fehlgeschlagen" });
+    }
+  }));
+
+  const nextOffset = offset + PAGE_SIZE;
+  const hasMore = total !== null ? nextOffset < total : series.length === PAGE_SIZE;
 
   return new Response(JSON.stringify({
-    total: series.length,
+    offset,
+    total,
+    this_batch: series.length,
     updated: updated.length,
     skipped: skipped.length,
     failed: failed.length,
+    has_more: hasMore,
+    next_url: hasMore ? "/api/season_count_init?offset=" + nextOffset : null,
     updated_titles: updated,
     failed_titles: failed
   }, null, 2), { headers: CORS });
