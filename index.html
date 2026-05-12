@@ -666,11 +666,17 @@ function setSeasonStatus(titleId, sn, status) {
   sb.from("season_status").upsert({title_id: titleId, season_number: sn, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id,season_number"});
 
   // Feature 3: letzte Staffel "done" → Gesamtstatus automatisch "done"
+  // Prüft gegen die tatsächliche Staffelzahl aus itemStore, nicht nur gegen bereits gesetzte Einträge
   if (status === "done") {
+    var totalSeasons = 0;
+    Object.keys(itemStore).forEach(function(k) {
+      if (itemStore[k].type + "-" + itemStore[k].id === titleId && itemStore[k].seasons) {
+        totalSeasons = itemStore[k].seasons.length;
+      }
+    });
     var allSeasonNrs = Object.keys(seasonStatuses[titleId]).map(Number);
-    if (allSeasonNrs.length > 0) {
-      var allDone = allSeasonNrs.every(function(n) { return seasonStatuses[titleId][n] === "done"; });
-      if (allDone) {
+    var doneSeasonsCount = allSeasonNrs.filter(function(n) { return seasonStatuses[titleId][n] === "done"; }).length;
+    if (totalSeasons > 0 && doneSeasonsCount >= totalSeasons) {
         userStatuses[titleId] = "done";
         // Supabase aktualisieren
         sb.from("watch_status").upsert({title_id: titleId, status: "done", updated_at: new Date().toISOString()}, {onConflict:"title_id"});
