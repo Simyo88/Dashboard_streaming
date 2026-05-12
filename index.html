@@ -256,6 +256,7 @@ var currentSort = "updated";
 var userStatuses = {};
 var seasonStatuses = {};
 var itemStore = {};
+var newSeasonIds = {}; // titleId → aktuelle Staffelzahl laut TMDB (wenn > gespeichert)
 var chatHistory = [];
 var searchTimer;
 
@@ -292,10 +293,18 @@ function cardHTML(item) {
       }).join("")
     : "";
 
+  // "Neue Staffel" Badge: wenn item.seasons.length > gespeicherter season_count
+  var newSeasonBadge = "";
+  if (item.type === "series" && item.seasons && item.seasons.length && newSeasonIds[key]) {
+    if (item.seasons.length > newSeasonIds[key]) {
+      newSeasonBadge = "<span class=\"card-badge\" style=\"background:#ff9f0a;color:#000;font-weight:800\">NEU</span>";
+    }
+  }
+
   var html = "<div class=\"card\" data-sk=\"" + sk + "\">";
   html += poster;
   html += "<div class=\"card-gradient\"></div>";
-  if (badges) html += "<div class=\"card-badges\">" + badges + "</div>";
+  if (badges || newSeasonBadge) html += "<div class=\"card-badges\">" + badges + newSeasonBadge + "</div>";
   if (statusCfg) html += "<div class=\"status-dot\" style=\"border-color:" + statusCfg.color + "\"></div>";
   html += "<div class=\"card-body\">";
   html += "<div class=\"card-title\">" + (item.title || "") + "</div>";
@@ -719,6 +728,12 @@ function loadStatuses() {
     (r.data||[]).forEach(function(row) {
       if (!seasonStatuses[row.title_id]) seasonStatuses[row.title_id] = {};
       seasonStatuses[row.title_id][row.season_number] = row.status;
+    });
+  });
+  // season_count laden um "Neue Staffel" Badge auf Karten zu setzen
+  sb.from("titles").select("id,season_count").eq("media_type","series").then(function(r) {
+    (r.data||[]).forEach(function(row) {
+      if (row.season_count) newSeasonIds[row.id] = row.season_count;
     });
   });
 }
