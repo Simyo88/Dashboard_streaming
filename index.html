@@ -119,6 +119,8 @@ main { padding: 16px 20px 100px; }
 .season-btns { display: flex; gap: 5px; }
 .season-btn { padding: 5px 10px; border-radius: var(--pill); border: 1px solid var(--border); font-size: 11px; font-weight: 500; cursor: pointer; background: transparent; color: var(--text-muted); transition: all 0.15s; }
 .season-btn.active { color: #000; border-color: transparent; font-weight: 600; }
+.new-season-badge { display: inline-block; background: #ff9f0a; color: #000; font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 6px; }
+.new-season-hint { background: rgba(255,159,10,0.12); border: 1px solid rgba(255,159,10,0.35); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #ff9f0a; display: flex; align-items: center; gap: 8px; }
 
 /* Chat */
 .chat-fab { position: fixed; bottom: 22px; right: 20px; width: 52px; height: 52px; border-radius: 50%; background: #fff; color: #000; font-size: 20px; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 300; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
@@ -462,14 +464,73 @@ function openModal(item) {
         return { number: s.season_number, episodes: s.episode_count };
       });
       item.seasons = seasons;
-      var sc = document.getElementById("seasons-container");
-      if (sc) sc.innerHTML = seasons.length ? renderSeasons(seasons, key) : "";
-      if (sc) attachSeasonBtns();
+      var currentSeasonCount = seasons.length;
+
+      // Feature 4+5: season_count aus Supabase prüfen und ggf. Badge zeigen
+      sb.from("titles").select("season_count").eq("id", key).single().then(function(r2) {
+        var storedCount = r2.data && r2.data.season_count ? r2.data.season_count : null;
+        var sc = document.getElementById("seasons-container");
+        if (sc) {
+          sc.innerHTML = seasons.length ? renderSeasons(seasons, key) : "";
+          attachSeasonBtns();
+        }
+        if (storedCount !== null && currentSeasonCount > storedCount) {
+          // Badge auf Karte setzen
+          document.querySelectorAll(".card").forEach(function(c) {
+            var sk = c.getAttribute("data-sk");
+            if (sk && itemStore[sk] && (itemStore[sk].type + "-" + itemStore[sk].id) === key) {
+              var badges = c.querySelector(".card-badges");
+              if (badges && !badges.querySelector(".new-s-badge")) {
+                var b = document.createElement("span");
+                b.className = "card-badge new-s-badge";
+                b.style.background = "#ff9f0a";
+                b.style.color = "#000";
+                b.textContent = "NEU";
+                badges.appendChild(b);
+              }
+            }
+          });
+          // Hinweis im Modal einblenden
+          var hint = document.createElement("div");
+          hint.className = "new-season-hint";
+          hint.innerHTML = "&#127381; <span><strong>Neue Staffel verfügbar!</strong> Staffel " + currentSeasonCount + " ist neu seit deinem letzten Besuch.</span>";
+          var statusBtnsEl = document.querySelector(".status-btns");
+          if (statusBtnsEl) statusBtnsEl.parentNode.insertBefore(hint, statusBtnsEl);
+        }
+        // Feature 5: season_count in Supabase speichern/aktualisieren
+        if (storedCount !== currentSeasonCount) {
+          sb.from("titles").update({season_count: currentSeasonCount}).eq("id", key);
+        }
+      }).catch(function() {
+        var sc = document.getElementById("seasons-container");
+        if (sc) { sc.innerHTML = seasons.length ? renderSeasons(seasons, key) : ""; attachSeasonBtns(); }
+        // Auch ohne gespeicherten Wert: season_count erstmalig speichern
+        sb.from("titles").update({season_count: currentSeasonCount}).eq("id", key);
+      });
     }).catch(function() {
       var sc = document.getElementById("seasons-container");
       if (sc) sc.innerHTML = "";
     });
   } else {
+    // Staffeln bereits bekannt → season_count trotzdem prüfen/speichern
+    if (item.seasons && item.seasons.length) {
+      var currentSeasonCount = item.seasons.length;
+      sb.from("titles").select("season_count").eq("id", key).single().then(function(r2) {
+        var storedCount = r2.data && r2.data.season_count ? r2.data.season_count : null;
+        if (storedCount !== null && currentSeasonCount > storedCount) {
+          var hint = document.createElement("div");
+          hint.className = "new-season-hint";
+          hint.innerHTML = "&#127381; <span><strong>Neue Staffel verfügbar!</strong> Staffel " + currentSeasonCount + " ist neu seit deinem letzten Besuch.</span>";
+          var statusBtnsEl = document.querySelector(".status-btns");
+          if (statusBtnsEl) statusBtnsEl.parentNode.insertBefore(hint, statusBtnsEl);
+        }
+        if (storedCount !== currentSeasonCount) {
+          sb.from("titles").update({season_count: currentSeasonCount}).eq("id", key);
+        }
+      }).catch(function() {
+        sb.from("titles").update({season_count: currentSeasonCount}).eq("id", key);
+      });
+    }
     attachSeasonBtns();
   }
 }
@@ -540,6 +601,23 @@ function attachSeasonBtns() {
 
 function setStatus(key, status, item) {
   userStatuses[key] = status;
+
+  // Feature 2: Serie auf "done" → alle Staffeln automatisch auf "done"
+  if (status === "done" && item && item.type === "series" && item.seasons && item.seasons.length) {
+    item.seasons.forEach(function(s) {
+      setSeasonStatus(key, s.number, "done");
+    });
+    // UI der Staffel-Buttons im offenen Modal aktualisieren
+    document.querySelectorAll(".season-btn").forEach(function(btn) {
+      var bsv = btn.getAttribute("data-sv");
+      var active = bsv === "done";
+      btn.className = "season-btn" + (active ? " active" : "");
+      btn.style.background = active ? STATUS["done"].color : "";
+      btn.style.color = active ? "#000" : "";
+      btn.style.borderColor = active ? "transparent" : "";
+    });
+  }
+
   if (currentTab !== "browse") {
     document.querySelectorAll(".card").forEach(function(c) {
       var sk = c.getAttribute("data-sk");
@@ -585,6 +663,46 @@ function setSeasonStatus(titleId, sn, status) {
   if (!seasonStatuses[titleId]) seasonStatuses[titleId] = {};
   seasonStatuses[titleId][sn] = status;
   sb.from("season_status").upsert({title_id: titleId, season_number: sn, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id,season_number"});
+
+  // Feature 3: letzte Staffel "done" → Gesamtstatus automatisch "done"
+  if (status === "done") {
+    var allSeasonNrs = Object.keys(seasonStatuses[titleId]).map(Number);
+    if (allSeasonNrs.length > 0) {
+      var allDone = allSeasonNrs.every(function(n) { return seasonStatuses[titleId][n] === "done"; });
+      if (allDone) {
+        userStatuses[titleId] = "done";
+        // Supabase aktualisieren
+        sb.from("watch_status").upsert({title_id: titleId, status: "done", updated_at: new Date().toISOString()}, {onConflict:"title_id"});
+        // Status-Buttons im Modal aktualisieren
+        document.querySelectorAll(".sbtn").forEach(function(b) {
+          var bs = b.getAttribute("data-s");
+          var active = bs === "done";
+          b.className = "sbtn" + (active ? " active" : "");
+          b.style.background = active ? STATUS["done"].color : "";
+          b.style.borderColor = active ? "transparent" : "";
+          b.style.color = active ? "#000" : "";
+        });
+        // Karte im Tab aktualisieren (status-dot)
+        if (currentTab !== "browse") {
+          document.querySelectorAll(".card").forEach(function(c) {
+            var sk = c.getAttribute("data-sk");
+            if (sk && itemStore[sk] && (itemStore[sk].type + "-" + itemStore[sk].id) === titleId) {
+              c.remove();
+            }
+          });
+        } else {
+          document.querySelectorAll(".card").forEach(function(c) {
+            var sk = c.getAttribute("data-sk");
+            if (sk && itemStore[sk] && (itemStore[sk].type + "-" + itemStore[sk].id) === titleId) {
+              var dot = c.querySelector(".status-dot");
+              if (!dot) { dot = document.createElement("div"); dot.className = "status-dot"; c.appendChild(dot); }
+              dot.style.borderColor = STATUS["done"].color;
+            }
+          });
+        }
+      }
+    }
+  }
 }
 
 function loadStatuses() {
