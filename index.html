@@ -572,8 +572,12 @@ function setStatus(key, status, item) {
     });
   }
   var titleData = { id: key, tmdb_id: item.id, media_type: item.type, title: item.title, poster_path: item.poster, vote_average: item.imdbScore || item.tmdbScore || null, overview: item.overview || null };
-  sb.from("titles").upsert(titleData, {onConflict:"id"}).then(function() {
-    sb.from("watch_status").upsert({title_id: key, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id"});
+  console.log("Saving status:", key, status, titleData);
+  sb.from("titles").upsert(titleData, {onConflict:"id"}).then(function(r) {
+    console.log("titles result:", r.error || "OK");
+    return sb.from("watch_status").upsert({title_id: key, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id"});
+  }).then(function(r) {
+    console.log("watch_status result:", r ? (r.error || "OK") : "no response");
   });
 }
 
