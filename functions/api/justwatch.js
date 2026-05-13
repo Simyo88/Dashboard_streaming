@@ -55,8 +55,8 @@ const POPULAR_QUERY = `
 `;
 
 const SEARCH_QUERY = `
-  query Search($country: Country!, $language: Language!, $query: String!) {
-    searchTitles(query: $query, country: $country, language: $language, first: 20) {
+  query Search($country: Country!, $language: Language!, $searchQuery: String!) {
+    searchTitles(searchQuery: $searchQuery, country: $country, language: $language, first: 20) {
       edges {
         node {
           content(country: $country, language: $language) {
@@ -142,7 +142,7 @@ export async function onRequest(context) {
 
   try {
     if (action === "search") {
-      const data = await jwQuery(SEARCH_QUERY, { country: "DE", language: "de", query });
+      const data = await jwQuery(SEARCH_QUERY, { country: "DE", language: "de", searchQuery: query });
       if (data.errors) {
         return new Response(JSON.stringify({ error: data.errors[0].message, items: [] }), { headers: CORS });
       }
