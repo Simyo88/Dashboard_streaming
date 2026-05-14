@@ -87,6 +87,7 @@ main { padding: 16px 20px 100px; }
 .card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .card-score { font-size: 10px; font-weight: 700; color: #ffd60a; }
 .card-seasons { font-size: 10px; color: rgba(255,255,255,0.6); }
+.card-channel-hint { border-left: 2px solid #ff9f0a; background: rgba(255,159,10,0.15); padding: 2px 5px; margin-top: 3px; font-size: 8px; color: #ff9f0a; font-weight: 600; }
 .card-badges { position: absolute; top: 8px; left: 8px; display: flex; gap: 4px; flex-wrap: wrap; max-width: 80%; }
 .card-badge { border-radius: 4px; padding: 2px 6px; font-size: 8px; color: #fff; font-weight: 800; }
 .status-badge { position: absolute; bottom: 42px; right: 8px; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 3px; color: #000; }
@@ -300,39 +301,44 @@ function cardHTML(item) {
     "showtime": {name: "Showtime", color: "#C00"}
   };
   var badges = "";
+  var channelHint = ""; // Streifen-Hinweis für Channel-Pflicht
   if (item.providers && item.providers.length) {
     var seenNames = {};
+    var channelNames = [];
     var badgeList = item.providers.map(function(p) {
       var name = p.name.toLowerCase();
       if (name.includes("with ads")) return null;
-      var displayName, color;
+      var displayName, color, isChannel = false;
       if (name.includes("channel")) {
         var mapped = null;
         Object.keys(CHANNEL_MAP).forEach(function(k) { if (name.includes(k)) mapped = CHANNEL_MAP[k]; });
         if (!mapped) return null;
-        displayName = mapped.name; color = mapped.color;
+        displayName = mapped.name; color = mapped.color; isChannel = true;
       } else {
         var prov = PROVIDERS.find(function(x) { return x.slug === p.slug; });
         color = prov ? prov.color : "#333";
         displayName = p.name;
       }
-      // Duplikate nach Name rausfiltern
       if (seenNames[displayName]) return null;
       seenNames[displayName] = true;
-      // Im Entdecken-Tab: nur aktuellen Provider anzeigen
       if (currentTab === "browse") {
-        // Direkt matching über Slug
         if (p.slug === currentSlug) {
-          // passt - anzeigen
-        } else if (currentSlug === "amp" && p.name.toLowerCase().includes("amazon")) {
-          // Amazon Prime Tab: auch Amazon Channels anzeigen
+          // direkter Match – anzeigen, kein Channel-Hinweis nötig
+        } else if (currentSlug === "amp" && name.includes("amazon")) {
+          // Amazon Channel – Badge anzeigen, aber Hinweis merken
+          if (isChannel) channelNames.push(displayName);
         } else {
           return null;
         }
       }
+      // Im Amazon-Tab: Channels nicht als Badge, nur als Hinweis
+      if (currentTab === "browse" && currentSlug === "amp" && isChannel) return null;
       return "<span class=\"card-badge\" style=\"background:" + color + "\">" + displayName + "</span>";
     }).filter(Boolean).slice(0, 2);
     badges = badgeList.join("");
+    if (channelNames.length > 0) {
+      channelHint = "<div class=\"card-channel-hint\">+ " + channelNames.slice(0,2).join(", ") + " nötig</div>";
+    }
   }
 
   // "Neue Staffel" Badge: newSeasonIds[key] gesetzt = neue Staffel verfügbar
@@ -351,7 +357,9 @@ function cardHTML(item) {
   html += "<div class=\"card-meta\">";
   if (score) html += "<span class=\"card-score\" style=\"color:" + scoreColor(score) + "\">&#9733; " + score.toFixed(1) + "</span>";
   if (seasons) html += "<span class=\"card-seasons\">" + seasons + "</span>";
-  html += "</div></div></div>";
+  html += "</div>";
+  if (channelHint) html += channelHint;
+  html += "</div></div>";
   return html;
 }
 
