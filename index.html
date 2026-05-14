@@ -372,7 +372,7 @@ function loadMyList(status) {
     var items = data.filter(function(r) { return r.titles; }).map(function(r) {
       var t = r.titles;
       return {
-        id: t.tmdb_id || r.title_id,
+        id: t.tmdb_id || r.title_id.replace(/^(series|movie)-/, ""),
         type: t.media_type || "series",
         title: t.title || "",
         poster: t.poster_path || null,
