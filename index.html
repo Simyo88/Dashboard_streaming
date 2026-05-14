@@ -117,8 +117,8 @@ main { padding: 16px 20px 100px; }
 .season-label { font-size: 13px; font-weight: 500; }
 .season-eps { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
 .season-btns { display: flex; gap: 5px; }
-.season-btn { padding: 5px 10px; border-radius: var(--pill); border: 1px solid var(--border); font-size: 11px; font-weight: 500; cursor: pointer; background: transparent; color: var(--text-muted); transition: all 0.15s; }
-.season-btn.active { color: #000; border-color: transparent; font-weight: 600; }
+.season-btn { padding: 5px 14px; border-radius: var(--pill); border: 1px solid var(--border); font-size: 11px; font-weight: 500; cursor: pointer; background: transparent; color: var(--text-muted); transition: all 0.15s; }
+.season-btn.active { background: #30d158; color: #000; border-color: transparent; font-weight: 700; }
 .new-season-badge { display: inline-block; background: #ff9f0a; color: #000; font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 6px; }
 .new-season-hint { background: rgba(255,159,10,0.12); border: 1px solid rgba(255,159,10,0.35); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #ff9f0a; display: flex; align-items: center; gap: 8px; }
 
@@ -552,14 +552,11 @@ function renderSeasons(seasons, key) {
   var html = "<div class=\"seasons-title\">Staffeln</div>";
   seasons.forEach(function(s) {
     var ss = seasonStatuses[key] && seasonStatuses[key][s.number] ? seasonStatuses[key][s.number] : "none";
+    var isDone = ss === "done";
     html += "<div class=\"season-row\">";
     html += "<div><span class=\"season-label\">Staffel " + s.number + "</span>" + (s.episodes ? "<span class=\"season-eps\">(" + s.episodes + " Eps.)</span>" : "") + "</div>";
     html += "<div class=\"season-btns\">";
-    Object.keys(STATUS).forEach(function(sv) {
-      var cfg = STATUS[sv];
-      var active = ss === sv;
-      html += "<button class=\"season-btn" + (active ? " active" : "") + "\" data-sn=\"" + s.number + "\" data-sv=\"" + sv + "\" style=\"" + (active ? "background:" + cfg.color + ";color:#000;border-color:transparent" : "") + "\">" + cfg.label.split(" ")[0] + "</button>";
-    });
+    html += "<button class=\"season-btn" + (isDone ? " active" : "") + "\" data-sn=\"" + s.number + "\" data-sv=\"" + (isDone ? "done" : "none") + "\">" + (isDone ? "✓ Gesehen" : "Gesehen") + "</button>";
     html += "</div></div>";
   });
   return html;
@@ -598,16 +595,17 @@ function attachSeasonBtns() {
           });
         }
       }
-      if (titleKey) setSeasonStatus(titleKey, sn, sv);
-      var row = this.closest(".season-row");
-      row.querySelectorAll(".season-btn").forEach(function(b) {
-        var bsv = b.getAttribute("data-sv");
-        var active = bsv === sv;
-        b.className = "season-btn" + (active ? " active" : "");
-        b.style.background = active ? STATUS[bsv].color : "";
-        b.style.color = active ? "#000" : "";
-        b.style.borderColor = active ? "transparent" : "";
-      });
+      // Toggle: done ↔ none
+      var currentSv = this.getAttribute("data-sv");
+      var newSv = currentSv === "done" ? "none" : "done";
+      if (titleKey) setSeasonStatus(titleKey, sn, newSv);
+      this.setAttribute("data-sv", newSv);
+      var isDone = newSv === "done";
+      this.className = "season-btn" + (isDone ? " active" : "");
+      this.textContent = isDone ? "✓ Gesehen" : "Gesehen";
+      this.style.background = "";
+      this.style.color = "";
+      this.style.borderColor = "";
     });
   });
 }
@@ -620,14 +618,14 @@ function setStatus(key, status, item) {
     item.seasons.forEach(function(s) {
       setSeasonStatus(key, s.number, "done");
     });
-    // UI der Staffel-Buttons im offenen Modal aktualisieren
+    // UI der Staffel-Buttons im offenen Modal aktualisieren (Toggle-Style)
     document.querySelectorAll(".season-btn").forEach(function(btn) {
-      var bsv = btn.getAttribute("data-sv");
-      var active = bsv === "done";
-      btn.className = "season-btn" + (active ? " active" : "");
-      btn.style.background = active ? STATUS["done"].color : "";
-      btn.style.color = active ? "#000" : "";
-      btn.style.borderColor = active ? "transparent" : "";
+      btn.setAttribute("data-sv", "done");
+      btn.className = "season-btn active";
+      btn.textContent = "✓ Gesehen";
+      btn.style.background = "";
+      btn.style.color = "";
+      btn.style.borderColor = "";
     });
   }
 
