@@ -294,14 +294,10 @@ function cardHTML(item) {
       }).join("")
     : "";
 
-  // "Neue Staffel" Badge: vergleiche TMDB-Staffeln mit gespeichertem season_count
+  // "Neue Staffel" Badge: newSeasonIds[key] gesetzt = neue Staffel verfügbar
   var newSeasonBadge = "";
-  if (item.type === "series") {
-    var tmdbCount = item.seasons && item.seasons.length ? item.seasons.length : 0;
-    var storedCount = newSeasonIds[key] || 0;
-    if (tmdbCount > 0 && storedCount > 0 && tmdbCount > storedCount) {
-      newSeasonBadge = "<span class=\"card-badge\" style=\"background:#ff9f0a;color:#000;font-weight:800\">NEU</span>";
-    }
+  if (item.type === "series" && newSeasonIds[key]) {
+    newSeasonBadge = "<span class=\"card-badge\" style=\"background:#ff9f0a;color:#000;font-weight:800\">NEU</span>";
   }
 
   var html = "<div class=\"card\" data-sk=\"" + sk + "\">";
@@ -514,9 +510,9 @@ function openModal(item) {
           var statusBtnsEl = document.querySelector(".status-btns");
           if (statusBtnsEl) statusBtnsEl.parentNode.insertBefore(hint, statusBtnsEl);
         }
-        // Feature 5: season_count in Supabase speichern/aktualisieren
+        // Feature 5: season_count_latest aktualisieren, season_count bleibt bis User bestätigt
         if (storedCount !== currentSeasonCount) {
-          sb.from("titles").update({season_count: currentSeasonCount}).eq("id", key);
+          sb.from("titles").update({season_count_latest: currentSeasonCount}).eq("id", key);
         }
       }).catch(function() {
         var sc = document.getElementById("seasons-container");
@@ -665,6 +661,11 @@ function setStatus(key, status, item) {
   console.log("Saving status:", key, status, titleData);
   sb.from("titles").upsert(titleData, {onConflict:"id"}).then(function(r) {
     console.log("titles result:", r.error || "OK");
+    // Wenn "done": season_count auf season_count_latest setzen → Badge verschwindet
+    if (status === "done" && newSeasonIds[key]) {
+      sb.from("titles").update({season_count: newSeasonIds[key]}).eq("id", key);
+      delete newSeasonIds[key];
+    }
     return sb.from("watch_status").upsert({title_id: key, status: status, updated_at: new Date().toISOString()}, {onConflict:"title_id"});
   }).then(function(r) {
     console.log("watch_status result:", r ? (r.error || "OK") : "no response");
@@ -723,10 +724,12 @@ function loadStatuses() {
       seasonStatuses[row.title_id][row.season_number] = row.status;
     });
   });
-  // season_count laden um "Neue Staffel" Badge auf Karten zu setzen
-  sb.from("titles").select("id,season_count").eq("media_type","series").then(function(r) {
+  // season_count vs season_count_latest vergleichen für NEU-Badge
+  sb.from("titles").select("id,season_count,season_count_latest").eq("media_type","series").then(function(r) {
     (r.data||[]).forEach(function(row) {
-      if (row.season_count) newSeasonIds[row.id] = row.season_count;
+      if (row.season_count_latest && row.season_count && row.season_count_latest > row.season_count) {
+        newSeasonIds[row.id] = row.season_count_latest;
+      }
     });
   });
 }
