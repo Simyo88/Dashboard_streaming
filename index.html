@@ -715,15 +715,19 @@ function setSeasonStatus(titleId, sn, status) {
   }
 }
 
-function loadStatuses() {
+function loadStatuses(callback) {
+  var pending = 3;
+  function done() { pending--; if (pending === 0 && callback) callback(); }
   sb.from("watch_status").select("*").then(function(r) {
     (r.data||[]).forEach(function(row) { userStatuses[row.title_id] = row.status; });
+    done();
   });
   sb.from("season_status").select("*").then(function(r) {
     (r.data||[]).forEach(function(row) {
       if (!seasonStatuses[row.title_id]) seasonStatuses[row.title_id] = {};
       seasonStatuses[row.title_id][row.season_number] = row.status;
     });
+    done();
   });
   // season_count vs season_count_latest vergleichen für NEU-Badge
   sb.from("titles").select("id,season_count,season_count_latest").eq("media_type","series").then(function(r) {
@@ -732,36 +736,7 @@ function loadStatuses() {
         newSeasonIds[row.id] = row.season_count_latest;
       }
     });
-    // Karten neu rendern damit Badges erscheinen
-    if (Object.keys(newSeasonIds).length > 0) {
-      var grid = document.querySelector(".grid");
-      if (grid) {
-        var cards = grid.querySelectorAll(".card");
-        cards.forEach(function(card) {
-          var sk = card.getAttribute("data-sk");
-          if (!sk || !itemStore[sk]) return;
-          var item = itemStore[sk];
-          var key = item.supabase_id || (item.type + "-" + item.id);
-          if (newSeasonIds[key]) {
-            var badges = card.querySelector(".card-badges");
-            if (!badges) {
-              badges = document.createElement("div");
-              badges.className = "card-badges";
-              card.appendChild(badges);
-            }
-            if (!badges.querySelector(".new-s-badge")) {
-              var b = document.createElement("span");
-              b.className = "card-badge new-s-badge";
-              b.style.background = "#ff9f0a";
-              b.style.color = "#000";
-              b.style.fontWeight = "800";
-              b.textContent = "NEU";
-              badges.appendChild(b);
-            }
-          }
-        });
-      }
-    }
+    done();
   });
 }
 
@@ -866,9 +841,8 @@ document.getElementById("chat-send").addEventListener("click", sendChat);
 document.getElementById("chat-input").addEventListener("keydown", function(e) { if (e.key==="Enter") sendChat(); });
 document.getElementById("modal-overlay").addEventListener("click", function(e) { if (e.target===this) this.style.display="none"; });
 
-loadStatuses();
 renderProviderBar();
-switchTab("browse");
+loadStatuses(function() { switchTab("browse"); });
 </script>
 </body>
 </html>
