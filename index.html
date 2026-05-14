@@ -470,7 +470,7 @@ function openModal(item) {
   });
 
   if (item.type === "series" && (!item.seasons || !item.seasons.length)) {
-    fetch("https://api.themoviedb.org/3/tv/" + item.id + "?language=de-DE", {
+    fetch("https://api.themoviedb.org/3/tv/" + (item.tmdb_id || item.id) + "?language=de-DE", {
       headers: { Authorization: "Bearer " + TMDB_TOKEN }
     }).then(function(r) { return r.json(); }).then(function(d) {
       var seasons = (d.seasons || []).filter(function(s) { return s.season_number > 0; }).map(function(s) {
