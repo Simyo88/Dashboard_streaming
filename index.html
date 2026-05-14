@@ -870,6 +870,17 @@ document.getElementById("sort-select").addEventListener("change", function() {
   else loadMyList(currentTab);
 });
 
+document.addEventListener("click", function(e) {
+  var bar = document.getElementById("search-bar");
+  var btn = document.getElementById("search-btn");
+  var input = document.getElementById("search-input");
+  if (bar.style.display === "block" && !bar.contains(e.target) && !btn.contains(e.target)) {
+    bar.style.display = "none";
+    input.value = "";
+    switchTab(currentTab);
+  }
+});
+
 document.getElementById("search-btn").addEventListener("click", function() {
   var bar = document.getElementById("search-bar");
   bar.style.display = bar.style.display === "none" ? "block" : "none";
