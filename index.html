@@ -507,7 +507,7 @@ function openModal(item) {
           // Hinweis im Modal einblenden
           var hint = document.createElement("div");
           hint.className = "new-season-hint";
-          hint.innerHTML = "&#127381; <span><strong>Neue Staffel verfügbar!</strong> Staffel " + currentSeasonCount + " ist neu seit deinem letzten Besuch.</span>";
+          hint.innerHTML = "&#127381; <span><strong>Neue Staffel verfügbar!</strong> Staffel " + currentSeasonCount + " wurde neu hinzugefügt.</span>";
           var statusBtnsEl = document.querySelector(".status-btns");
           if (statusBtnsEl) statusBtnsEl.parentNode.insertBefore(hint, statusBtnsEl);
         }
@@ -534,7 +534,7 @@ function openModal(item) {
         if (storedCount !== null && currentSeasonCount > storedCount) {
           var hint = document.createElement("div");
           hint.className = "new-season-hint";
-          hint.innerHTML = "&#127381; <span><strong>Neue Staffel verfügbar!</strong> Staffel " + currentSeasonCount + " ist neu seit deinem letzten Besuch.</span>";
+          hint.innerHTML = "&#127381; <span><strong>Neue Staffel verfügbar!</strong> Staffel " + currentSeasonCount + " wurde neu hinzugefügt.</span>";
           var statusBtnsEl = document.querySelector(".status-btns");
           if (statusBtnsEl) statusBtnsEl.parentNode.insertBefore(hint, statusBtnsEl);
         }
