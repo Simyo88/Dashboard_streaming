@@ -319,10 +319,9 @@ function cardHTML(item) {
       // Duplikate nach Name rausfiltern
       if (seenNames[displayName]) return null;
       seenNames[displayName] = true;
-      // Im Entdecken-Tab: nur aktuellen Provider anzeigen
+      // Im Entdecken-Tab: nur aktuellen Provider anzeigen (Vergleich über Slug)
       if (currentTab === "browse") {
-        var currentProv = PROVIDERS.find(function(x) { return x.slug === currentSlug; });
-        if (currentProv && displayName !== currentProv.name) return null;
+        if (p.slug !== currentSlug) return null;
       }
       return "<span class=\"card-badge\" style=\"background:" + color + "\">" + displayName + "</span>";
     }).filter(Boolean).slice(0, 2);
