@@ -149,8 +149,9 @@ export async function onRequest(context) {
       const edges = data?.data?.searchTitles?.edges || [];
       const seen = new Set();
       const items = edges.map(e => formatItem(e.node)).filter(item => {
-        if (seen.has(item.id)) return false;
-        seen.add(item.id);
+        const key = item.type + "-" + item.title.toLowerCase().trim();
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
       });
       await Promise.all(items.map(async (item) => {
