@@ -319,9 +319,16 @@ function cardHTML(item) {
       // Duplikate nach Name rausfiltern
       if (seenNames[displayName]) return null;
       seenNames[displayName] = true;
-      // Im Entdecken-Tab: nur aktuellen Provider anzeigen (Vergleich über Slug)
+      // Im Entdecken-Tab: nur aktuellen Provider anzeigen
       if (currentTab === "browse") {
-        if (p.slug !== currentSlug) return null;
+        // Direkt matching über Slug
+        if (p.slug === currentSlug) {
+          // passt - anzeigen
+        } else if (currentSlug === "amp" && p.name.toLowerCase().includes("amazon")) {
+          // Amazon Prime Tab: auch Amazon Channels anzeigen
+        } else {
+          return null;
+        }
       }
       return "<span class=\"card-badge\" style=\"background:" + color + "\">" + displayName + "</span>";
     }).filter(Boolean).slice(0, 2);
