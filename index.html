@@ -89,7 +89,7 @@ main { padding: 16px 20px 100px; }
 .card-seasons { font-size: 10px; color: rgba(255,255,255,0.6); }
 .card-badges { position: absolute; top: 8px; left: 8px; display: flex; gap: 4px; flex-wrap: wrap; max-width: 80%; }
 .card-badge { border-radius: 4px; padding: 2px 6px; font-size: 8px; color: #fff; font-weight: 800; }
-.status-dot { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.15); }
+.status-badge { position: absolute; bottom: 42px; right: 8px; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 3px; color: #000; }
 
 /* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(12px); z-index: 500; display: flex; align-items: flex-end; justify-content: center; }
@@ -171,7 +171,7 @@ main { padding: 16px 20px 100px; }
   </div>
   <div class="status-tabs" id="status-tabs">
     <div class="stab" data-tab="browse">Entdecken</div>
-    <div class="stab" data-tab="want">Will ich sehen</div>
+    <div class="stab" data-tab="want">Watchlist</div>
     <div class="stab" data-tab="watching">Angefangen</div>
     <div class="stab" data-tab="aborted">Abgebrochen</div>
     <div class="stab" data-tab="done">Gesehen</div>
@@ -238,7 +238,7 @@ var PROVIDERS = [
 ];
 
 var STATUS = {
-  want:     {label:"Will ich sehen", color:"#bf5af2"},
+  want:     {label:"Watchlist", color:"#bf5af2"},
   watching: {label:"Angefangen",     color:"#ff9f0a"},
   aborted:  {label:"Abgebrochen",    color:"#ff453a"},
   done:     {label:"Gesehen",        color:"#32d74b"}
@@ -305,7 +305,7 @@ function cardHTML(item) {
   html += poster;
   html += "<div class=\"card-gradient\"></div>";
   if (badges || newSeasonBadge) html += "<div class=\"card-badges\">" + badges + newSeasonBadge + "</div>";
-  if (statusCfg) html += "<div class=\"status-dot\" style=\"border-color:" + statusCfg.color + "\"></div>";
+  if (statusCfg) html += "<div class=\"status-badge\" style=\"background:" + statusCfg.color + ";color:" + (statusCfg.color === \"#32d74b\" || statusCfg.color === \"#bf5af2\" ? \"#000\" : \"#000\") + "\">" + statusCfg.label + "</div>";
   html += "<div class=\"card-body\">";
   html += "<div class=\"card-title\">" + (item.title || "") + "</div>";
   html += "<div class=\"card-meta\">";
@@ -696,21 +696,12 @@ function setSeasonStatus(titleId, sn, status) {
           b.style.borderColor = active ? "transparent" : "";
           b.style.color = active ? "#000" : "";
         });
-        // Karte im Tab aktualisieren (status-dot)
+        // Karte aus Tab entfernen wenn Status gesetzt
         if (currentTab !== "browse") {
           document.querySelectorAll(".card").forEach(function(c) {
             var sk = c.getAttribute("data-sk");
             if (sk && itemStore[sk] && (itemStore[sk].type + "-" + itemStore[sk].id) === titleId) {
               c.remove();
-            }
-          });
-        } else {
-          document.querySelectorAll(".card").forEach(function(c) {
-            var sk = c.getAttribute("data-sk");
-            if (sk && itemStore[sk] && (itemStore[sk].type + "-" + itemStore[sk].id) === titleId) {
-              var dot = c.querySelector(".status-dot");
-              if (!dot) { dot = document.createElement("div"); dot.className = "status-dot"; c.appendChild(dot); }
-              dot.style.borderColor = STATUS["done"].color;
             }
           });
         }
