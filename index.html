@@ -234,9 +234,13 @@ var PROVIDERS = [
   {slug:"atp", name:"Apple TV+",    color:"#555"},
   {slug:"sko", name:"WOW",          color:"#FF6B35"},
   {slug:"mxx", name:"HBO Max",      color:"#5822B4"},
+  {slug:"pmp", name:"Paramount+",   color:"#0064FF"},
   {slug:"tvn", name:"RTL+",         color:"#E4002B"},
   {slug:"jyn", name:"Joyn",         color:"#00C896"}
 ];
+
+// Amazon Channel Slugs die ausgefiltert werden sollen
+var BLOCKED_PROVIDER_SLUGS = ["agm", "qca", "prv", "amc", "shd", "stza", "starz", "hboa", "sho"];
 
 var STATUS = {
   want:     {label:"Watchlist", color:"#bf5af2"},
@@ -287,7 +291,10 @@ function cardHTML(item) {
     : "<div class=\"card-placeholder\">&#127916;</div>";
 
   var badges = item.providers && item.providers.length
-    ? item.providers.slice(0,2).map(function(p) {
+    ? item.providers.filter(function(p) {
+        // Amazon Channels und sonstige Sub-Channels ausfiltern
+        return !p.name.toLowerCase().includes("channel") && !p.name.toLowerCase().includes("amazon prime video with ads");
+      }).slice(0,2).map(function(p) {
         var prov = PROVIDERS.find(function(x) { return x.slug === p.slug; });
         var col = prov ? prov.color : "#333";
         return "<span class=\"card-badge\" style=\"background:" + col + "\">" + p.name + "</span>";
