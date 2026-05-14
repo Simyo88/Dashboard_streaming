@@ -147,7 +147,12 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ error: data.errors[0].message, items: [] }), { headers: CORS });
       }
       const edges = data?.data?.searchTitles?.edges || [];
-      const items = edges.map(e => formatItem(e.node));
+      const seen = new Set();
+      const items = edges.map(e => formatItem(e.node)).filter(item => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
       await Promise.all(items.map(async (item) => {
         item.poster = await getTmdbPoster(item.title, item.type);
       }));
