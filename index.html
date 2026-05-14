@@ -290,7 +290,7 @@ function cardHTML(item) {
     ? "<img src=\"" + item.poster + "\" alt=\"\" loading=\"lazy\">"
     : "<div class=\"card-placeholder\">&#127916;</div>";
 
-  // Provider-Badges: Channels auf bekannte Marken mappen, unbekannte Channels rausfiltern
+  // Provider-Badges: im Entdecken-Tab nur aktuellen Provider zeigen
   var CHANNEL_MAP = {
     "paramount": {name: "Paramount+", color: "#0064FF"},
     "apple tv": {name: "Apple TV+", color: "#555"},
@@ -299,25 +299,35 @@ function cardHTML(item) {
     "starz": {name: "Starz", color: "#000"},
     "showtime": {name: "Showtime", color: "#C00"}
   };
-  var badges = item.providers && item.providers.length
-    ? item.providers.map(function(p) {
-        var name = p.name.toLowerCase();
-        // "Amazon Prime Video with Ads" komplett rausfiltern
-        if (name.includes("with ads")) return null;
-        // Channel-Mapping: bekannte Marken erkennen
-        if (name.includes("channel") || name.includes("amazon channel")) {
-          var mapped = null;
-          Object.keys(CHANNEL_MAP).forEach(function(k) {
-            if (name.includes(k)) mapped = CHANNEL_MAP[k];
-          });
-          if (!mapped) return null; // unbekannter Channel → rausfiltern
-          return "<span class=\"card-badge\" style=\"background:" + mapped.color + ";opacity:0.8\">" + mapped.name + "</span>";
-        }
+  var badges = "";
+  if (item.providers && item.providers.length) {
+    var seenNames = {};
+    var badgeList = item.providers.map(function(p) {
+      var name = p.name.toLowerCase();
+      if (name.includes("with ads")) return null;
+      var displayName, color;
+      if (name.includes("channel")) {
+        var mapped = null;
+        Object.keys(CHANNEL_MAP).forEach(function(k) { if (name.includes(k)) mapped = CHANNEL_MAP[k]; });
+        if (!mapped) return null;
+        displayName = mapped.name; color = mapped.color;
+      } else {
         var prov = PROVIDERS.find(function(x) { return x.slug === p.slug; });
-        var col = prov ? prov.color : "#333";
-        return "<span class=\"card-badge\" style=\"background:" + col + "\">" + p.name + "</span>";
-      }).filter(Boolean).slice(0,2).join("")
-    : "";
+        color = prov ? prov.color : "#333";
+        displayName = p.name;
+      }
+      // Duplikate nach Name rausfiltern
+      if (seenNames[displayName]) return null;
+      seenNames[displayName] = true;
+      // Im Entdecken-Tab: nur aktuellen Provider anzeigen
+      if (currentTab === "browse") {
+        var currentProv = PROVIDERS.find(function(x) { return x.slug === currentSlug; });
+        if (currentProv && displayName !== currentProv.name) return null;
+      }
+      return "<span class=\"card-badge\" style=\"background:" + color + "\">" + displayName + "</span>";
+    }).filter(Boolean).slice(0, 2);
+    badges = badgeList.join("");
+  }
 
   // "Neue Staffel" Badge: newSeasonIds[key] gesetzt = neue Staffel verfügbar
   var newSeasonBadge = "";
