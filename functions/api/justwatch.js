@@ -56,7 +56,7 @@ const POPULAR_QUERY = `
 
 const SEARCH_QUERY = `
   query Search($country: Country!, $language: Language!, $searchQuery: String!) {
-    searchTitles(country: $country, language: $language, first: 20, filter: {searchQuery: $searchQuery, includeTitlesWithoutUrl: true}) {
+    searchTitles(country: $country, language: $language, first: 20, source: "SearchSuggester", filter: {searchQuery: $searchQuery, includeTitlesWithoutUrl: true}) {
       edges {
         node {
           content(country: $country, language: $language) {
