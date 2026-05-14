@@ -290,15 +290,33 @@ function cardHTML(item) {
     ? "<img src=\"" + item.poster + "\" alt=\"\" loading=\"lazy\">"
     : "<div class=\"card-placeholder\">&#127916;</div>";
 
+  // Provider-Badges: Channels auf bekannte Marken mappen, unbekannte Channels rausfiltern
+  var CHANNEL_MAP = {
+    "paramount": {name: "Paramount+", color: "#0064FF"},
+    "apple tv": {name: "Apple TV+", color: "#555"},
+    "disney": {name: "Disney+", color: "#113CCF"},
+    "hbo": {name: "HBO Max", color: "#5822B4"},
+    "starz": {name: "Starz", color: "#000"},
+    "showtime": {name: "Showtime", color: "#C00"}
+  };
   var badges = item.providers && item.providers.length
-    ? item.providers.filter(function(p) {
-        // Amazon Channels und sonstige Sub-Channels ausfiltern
-        return !p.name.toLowerCase().includes("channel") && !p.name.toLowerCase().includes("amazon prime video with ads");
-      }).slice(0,2).map(function(p) {
+    ? item.providers.map(function(p) {
+        var name = p.name.toLowerCase();
+        // "Amazon Prime Video with Ads" komplett rausfiltern
+        if (name.includes("with ads")) return null;
+        // Channel-Mapping: bekannte Marken erkennen
+        if (name.includes("channel") || name.includes("amazon channel")) {
+          var mapped = null;
+          Object.keys(CHANNEL_MAP).forEach(function(k) {
+            if (name.includes(k)) mapped = CHANNEL_MAP[k];
+          });
+          if (!mapped) return null; // unbekannter Channel → rausfiltern
+          return "<span class=\"card-badge\" style=\"background:" + mapped.color + ";opacity:0.8\">" + mapped.name + "</span>";
+        }
         var prov = PROVIDERS.find(function(x) { return x.slug === p.slug; });
         var col = prov ? prov.color : "#333";
         return "<span class=\"card-badge\" style=\"background:" + col + "\">" + p.name + "</span>";
-      }).join("")
+      }).filter(Boolean).slice(0,2).join("")
     : "";
 
   // "Neue Staffel" Badge: newSeasonIds[key] gesetzt = neue Staffel verfügbar
