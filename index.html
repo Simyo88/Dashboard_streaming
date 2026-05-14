@@ -323,18 +323,22 @@ function cardHTML(item) {
       seenNames[displayName] = true;
       if (currentTab === "browse") {
         if (p.slug === currentSlug) {
-          // direkter Match – anzeigen, kein Channel-Hinweis nötig
+          // direkter Match – anzeigen
         } else if (currentSlug === "amp" && name.includes("amazon")) {
-          // Amazon Channel – Badge anzeigen, aber Hinweis merken
+          // Amazon Channel – Hinweis merken, aber keinen eigenen Badge
           if (isChannel) channelNames.push(displayName);
+          return null;
         } else {
           return null;
         }
       }
-      // Im Amazon-Tab: Channels nicht als Badge, nur als Hinweis
-      if (currentTab === "browse" && currentSlug === "amp" && isChannel) return null;
       return "<span class=\"card-badge\" style=\"background:" + color + "\">" + displayName + "</span>";
     }).filter(Boolean).slice(0, 2);
+    // Wenn im Browse-Tab keine direkten Badges aber Channel-Hinweise vorhanden → aktuellen Provider-Badge erzwingen
+    if (currentTab === "browse" && badgeList.length === 0 && channelNames.length > 0) {
+      var curProv = PROVIDERS.find(function(x) { return x.slug === currentSlug; });
+      if (curProv) badgeList.push("<span class=\"card-badge\" style=\"background:" + curProv.color + "\">" + curProv.name + "</span>");
+    }
     badges = badgeList.join("");
     if (channelNames.length > 0) {
       channelHint = "<div class=\"card-channel-hint\">+ " + channelNames.slice(0,2).join(", ") + " nötig</div>";
