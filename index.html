@@ -640,7 +640,7 @@ function setStatus(key, status, item) {
     var grid = document.querySelector(".grid");
     if (header && grid) {
       var count = grid.querySelectorAll(".card").length;
-      header.innerHTML = header.innerHTML.replace(/\([0-9]+\)/, "(" + count + ")");
+      header.innerHTML = header.innerHTML.replace(/[(][0-9]+[)]/, "(" + count + ")");
     }
   } else {
     // Im Entdecken-Tab: Karte sofort entfernen wenn ein Status gesetzt wird
@@ -654,7 +654,7 @@ function setStatus(key, status, item) {
     var grid = document.querySelector(".grid");
     if (header && grid) {
       var count = grid.querySelectorAll(".card").length;
-      header.innerHTML = header.innerHTML.replace(/\([0-9]+\)/, "(" + count + ")");
+      header.innerHTML = header.innerHTML.replace(/[(][0-9]+[)]/, "(" + count + ")");
     }
   }
   var titleData = { id: key, tmdb_id: item.id, media_type: item.type, title: item.title, poster_path: item.poster, vote_average: item.imdbScore || item.tmdbScore || null, overview: item.overview || null };
