@@ -305,7 +305,7 @@ function cardHTML(item) {
   html += poster;
   html += "<div class=\"card-gradient\"></div>";
   if (badges || newSeasonBadge) html += "<div class=\"card-badges\">" + badges + newSeasonBadge + "</div>";
-  if (statusCfg) html += "<div class=\"status-badge\" style=\"background:" + statusCfg.color + ";color:" + (statusCfg.color === \"#32d74b\" || statusCfg.color === \"#bf5af2\" ? \"#000\" : \"#000\") + "\">" + statusCfg.label + "</div>";
+  if (statusCfg) html += "<div class=\"status-badge\" style=\"background:" + statusCfg.color + ";color:#000\">" + statusCfg.label + "</div>";
   html += "<div class=\"card-body\">";
   html += "<div class=\"card-title\">" + (item.title || "") + "</div>";
   html += "<div class=\"card-meta\">";
