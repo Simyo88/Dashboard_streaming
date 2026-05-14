@@ -274,7 +274,7 @@ function scoreColor(s) {
 }
 
 function cardHTML(item) {
-  var key = item.type + "-" + item.id;
+  var key = item.supabase_id || (item.type + "-" + item.id);
   var status = userStatuses[key] || "none";
   var sk = key + "-" + Math.random().toString(36).slice(2);
   itemStore[sk] = item;
@@ -373,6 +373,7 @@ function loadMyList(status) {
       var t = r.titles;
       return {
         id: t.tmdb_id || r.title_id.replace(/^(series|movie)-/, ""),
+        supabase_id: r.title_id,
         type: t.media_type || "series",
         title: t.title || "",
         poster: t.poster_path || null,
@@ -414,7 +415,7 @@ function switchTab(tab) {
 }
 
 function openModal(item) {
-  var key = item.type + "-" + item.id;
+  var key = item.supabase_id || (item.type + "-" + item.id);
   var status = userStatuses[key] || "none";
   var score = item.imdbScore || item.tmdbScore;
   var tmdbScore = item.tmdbScore;
