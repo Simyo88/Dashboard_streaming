@@ -11,6 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="StreamBoard">
 <link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
@@ -36,10 +39,8 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
 header { position: sticky; top: 0; z-index: 200; background: rgba(13,17,23,0.95); backdrop-filter: blur(24px); border-bottom: 1px solid var(--border); padding: 14px 20px; }
 .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .logo { display: flex; align-items: center; gap: 10px; }
-.logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-.logo-icon svg { width: 18px; height: 18px; }
-.logo-text { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
-.logo-text span { color: var(--accent); font-weight: 700; }
+.logo-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo-icon svg { width: 36px; height: 36px; }
 .header-actions { display: flex; gap: 8px; }
 .icon-btn { background: transparent; border: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 18px; transition: all 0.2s; }
 .icon-btn:hover { opacity: 0.7; }
@@ -170,13 +171,16 @@ main { padding: 16px 20px 100px; }
     <div class="logo">
       <div class="logo-icon">
         <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="1" width="7" height="10" rx="1.5" fill="#000"/>
-          <rect x="10" y="1" width="7" height="6" rx="1.5" fill="#000"/>
-          <rect x="10" y="9" width="7" height="8" rx="1.5" fill="#000"/>
-          <rect x="1" y="13" width="7" height="4" rx="1.5" fill="#000"/>
+          <rect x="1" y="1" width="7" height="10" rx="1.5" fill="#55efc4"/>
+          <rect x="10" y="1" width="7" height="6" rx="1.5" fill="#55efc4"/>
+          <rect x="10" y="9" width="7" height="8" rx="1.5" fill="#55efc4"/>
+          <rect x="1" y="13" width="7" height="4" rx="1.5" fill="#55efc4"/>
         </svg>
       </div>
-      <div class="logo-text">Stream<span>Board</span></div>
+      <div style="display:flex;flex-direction:column;line-height:1.0;">
+        <span id="logo-stream" style="font-family:'Barlow',sans-serif;font-weight:900;font-size:14px;color:rgba(255,255,255,0.4);display:inline-block;white-space:nowrap;transform-origin:left center;">STREAM</span>
+        <span id="logo-board" style="font-family:'Barlow',sans-serif;font-weight:900;font-size:32px;color:#55efc4;display:inline-block;line-height:1;">BOARD</span>
+      </div>
     </div>
     <div class="header-actions">
       <button class="icon-btn" id="search-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
@@ -1000,6 +1004,14 @@ loadStatuses(function() { switchTab("browse"); });
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js");
 }
+
+document.fonts.ready.then(function() {
+  var s = document.getElementById("logo-stream");
+  var b = document.getElementById("logo-board");
+  if (s && b && b.offsetWidth > 0) {
+    s.style.transform = "scaleX(" + (b.offsetWidth / s.offsetWidth) + ")";
+  }
+});
 </script>
 </body>
 </html>
