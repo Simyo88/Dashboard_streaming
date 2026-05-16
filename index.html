@@ -363,6 +363,7 @@ function cardHTML(item) {
   if (statusCfg) html += "<div class=\"status-badge\" style=\"background:" + statusCfg.color + ";color:#000\">" + statusCfg.label + "</div>";
   html += "<div class=\"card-body\">";
   html += "<div class=\"card-title\">" + (item.title || "") + "</div>";
+  if (item.year) html += "<div style=\"font-size:10px;color:rgba(255,255,255,0.38);margin-bottom:2px\">" + item.year + "</div>";
   html += "<div class=\"card-meta\">";
   if (score) html += "<span class=\"card-score\" style=\"color:" + scoreColor(score) + "\">&#9733; " + score.toFixed(1) + "</span>";
   if (seasons) html += "<span class=\"card-seasons\">" + seasons + "</span>";
@@ -445,6 +446,7 @@ function loadMyList(status) {
         genres: [],
         providers: [],
         seasons: [],
+        year: t.year || null,
         updated_at: r.updated_at
       };
     });
@@ -510,6 +512,7 @@ function openModal(item) {
   html += "<div class=\"modal-info\">";
   html += "<button class=\"modal-close\" onclick=\"document.getElementById('modal-overlay').style.display='none'\">&#10005;</button>";
   html += "<div class=\"modal-title\">" + (item.title || "") + "</div>";
+  if (item.year) html += "<div style=\"font-size:12px;color:var(--text-muted);margin-bottom:4px\">" + item.year + "</div>";
   if (scores) html += "<div class=\"modal-scores\">" + scores + "</div>";
   if (item.genres && item.genres.length) html += "<div class=\"modal-genres\">" + item.genres.join(" &bull; ") + "</div>";
   html += "</div></div>";
@@ -730,7 +733,7 @@ function setStatus(key, status, item) {
       header.innerHTML = header.innerHTML.replace(/[(][0-9]+[)]/, "(" + count + ")");
     }
   }
-  var titleData = { id: key, tmdb_id: item.id, media_type: item.type, title: item.title, poster_path: item.poster, vote_average: item.imdbScore || item.tmdbScore || null, overview: item.overview || null };
+  var titleData = { id: key, tmdb_id: item.id, media_type: item.type, title: item.title, poster_path: item.poster, vote_average: item.imdbScore || item.tmdbScore || null, overview: item.overview || null, year: item.year || null };
   console.log("Saving status:", key, status, titleData);
   sb.from("titles").upsert(titleData, {onConflict:"id"}).then(function(r) {
     console.log("titles result:", r.error || "OK");

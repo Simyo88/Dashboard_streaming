@@ -85,16 +85,36 @@ const SEARCH_QUERY = `
   }
 `;
 
-async function getTmdbPoster(title, type) {
+async function getTmdbDetails(title, type) {
   try {
     const t = type === "series" ? "tv" : "movie";
-    const url = "https://api.themoviedb.org/3/search/" + t + "?query=" + encodeURIComponent(title) + "&language=de-DE";
-    const res = await fetch(url, { headers: { Authorization: "Bearer " + TMDB_TOKEN } });
-    const data = await res.json();
-    const result = (data.results || [])[0];
-    return result && result.poster_path ? "https://image.tmdb.org/t/p/w300" + result.poster_path : null;
+    const searchRes = await fetch(
+      "https://api.themoviedb.org/3/search/" + t + "?query=" + encodeURIComponent(title) + "&language=de-DE",
+      { headers: { Authorization: "Bearer " + TMDB_TOKEN } }
+    );
+    const searchData = await searchRes.json();
+    const result = (searchData.results || [])[0];
+    if (!result) return { poster: null, year: null, overview: null };
+
+    const poster = result.poster_path ? "https://image.tmdb.org/t/p/w300" + result.poster_path : null;
+    const dateStr = type === "series" ? result.first_air_date : result.release_date;
+    const year = dateStr ? parseInt(dateStr.slice(0, 4)) : null;
+    let overview = result.overview || null;
+
+    if (!overview && result.id) {
+      try {
+        const enRes = await fetch(
+          "https://api.themoviedb.org/3/" + t + "/" + result.id + "?language=en-US",
+          { headers: { Authorization: "Bearer " + TMDB_TOKEN } }
+        );
+        const enData = await enRes.json();
+        overview = enData.overview || null;
+      } catch(e) {}
+    }
+
+    return { poster, year, overview };
   } catch(e) {
-    return null;
+    return { poster: null, year: null, overview: null };
   }
 }
 
@@ -117,6 +137,7 @@ function formatItem(node) {
     type: node.objectType === "SHOW" ? "series" : "movie",
     title: c.title || "",
     poster: null,
+    year: null,
     overview: c.shortDescription || "",
     imdbScore: c.scoring?.imdbScore || null,
     tmdbScore: c.scoring?.tmdbScore || null,
@@ -155,7 +176,7 @@ export async function onRequest(context) {
         return true;
       });
       await Promise.all(items.map(async (item) => {
-        item.poster = await getTmdbPoster(item.title, item.type);
+        const details = await getTmdbDetails(item.title, item.type); item.poster = details.poster; item.year = details.year; if (details.overview) item.overview = details.overview;
       }));
       return new Response(JSON.stringify(items), { headers: CORS });
     }
@@ -175,7 +196,7 @@ export async function onRequest(context) {
 
     // Fetch TMDB posters in parallel
     await Promise.all(items.map(async (item) => {
-      item.poster = await getTmdbPoster(item.title, item.type);
+      const details = await getTmdbDetails(item.title, item.type); item.poster = details.poster; item.year = details.year; if (details.overview) item.overview = details.overview;
     }));
 
     return new Response(JSON.stringify({ items, total }), { headers: CORS });
