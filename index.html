@@ -240,16 +240,19 @@ var TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWJlZDJiNjNjZmVmZjQwMzAwZmQxZ
 var CLAUDE_API = "https://api.anthropic.com/v1/messages";
 var API = "/api/justwatch";
 
+var JW_ICON = "https://images.justwatch.com/icon";
 var PROVIDERS = [
-  {slug:"nfx", name:"Netflix",      color:"#E50914", logo:"https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/netflix.svg"},
-  {slug:"amp", name:"Amazon Prime", color:"#00A8E0", logo:"https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/primevideo.svg"},
-  {slug:"dnp", name:"Disney+",      color:"#113CCF", logo:"https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/disneyplus.svg"},
-  {slug:"atp", name:"Apple TV+",    color:"#1c1c1e", logo:"https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/appletv.svg"},
-  {slug:"sko", name:"WOW",          color:"#000000", logo:null},
-  {slug:"mxx", name:"HBO Max",      color:"#5822B4", logo:"https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/hbomax.svg"},
-  {slug:"pmp", name:"Paramount+",   color:"#0064FF", logo:"https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/paramountplus.svg"},
-  {slug:"tvn", name:"RTL+",         color:"#E4002B", logo:null},
-  {slug:"jyn", name:"Joyn",         color:"#00C896", logo:null}
+  {slug:"nfx", name:"Netflix",       color:"#E50914", logo:JW_ICON+"/207360008/s100/netflix.png"},
+  {slug:"amp", name:"Amazon Prime",  color:"#00A8E0", logo:JW_ICON+"/322992749/s100/amazonprime.png"},
+  {slug:"dnp", name:"Disney+",       color:"#113CCF", logo:JW_ICON+"/313118777/s100/disneyplus.png"},
+  {slug:"atp", name:"Apple TV+",     color:"#1c1c1e", logo:JW_ICON+"/338367329/s100/appletvplus.png"},
+  {slug:"sko", name:"WOW",           color:"#1a1a1a", logo:JW_ICON+"/305841946/s100/skyticket.png"},
+  {slug:"mxx", name:"HBO Max",       color:"#5822B4", logo:JW_ICON+"/332884837/s100/max.png"},
+  {slug:"pmp", name:"Paramount+",    color:"#0064FF", logo:JW_ICON+"/242706661/s100/paramountplus.png"},
+  {slug:"tvn", name:"RTL+",          color:"#E4002B", logo:JW_ICON+"/254509043/s100/tvnowde.png"},
+  {slug:"jyn", name:"Joyn",          color:"#00C896", logo:JW_ICON+"/134429559/s100/joynde.png"},
+  {slug:"dem", name:"ARD Mediathek", color:"#005587", logo:JW_ICON+"/305906930/s100/daserstemediathek.png"},
+  {slug:"zdf", name:"ZDF Mediathek", color:"#121212", logo:JW_ICON+"/242965977/s100/zdf.png"}
 ];
 
 // Amazon Channel Slugs die ausgefiltert werden sollen
@@ -394,7 +397,7 @@ function renderProviderBar() {
   bar.innerHTML = PROVIDERS.map(function(p) {
     var active = p.slug === currentSlug;
     var inner = p.logo
-      ? "<img src=\"" + p.logo + "\" alt=\"" + p.name + "\" style=\"height:22px;width:auto;max-width:70px;object-fit:contain;filter:brightness(0) invert(1);\" onerror=\"this.style.display='none';this.nextSibling.style.display='block'\"><span style=\"display:none\">" + p.name + "</span>"
+      ? "<img src=\"" + p.logo + "\" alt=\"" + p.name + "\" style=\"height:26px;width:26px;object-fit:cover;border-radius:5px;\" onerror=\"this.style.display='none';this.nextSibling.style.display='block'\"><span style=\"display:none\">" + p.name + "</span>"
       : p.name;
     return "<div class=\"ppill\" data-slug=\"" + p.slug + "\" style=\"background:" + (active ? p.color : "var(--surface2)") + ";border-color:" + (active ? p.color : "var(--border)") + ";padding:8px 14px;min-width:64px;display:flex;align-items:center;justify-content:center;\">" + inner + "</div>";
   }).join("");
