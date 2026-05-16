@@ -45,11 +45,11 @@ header { position: sticky; top: 0; z-index: 200; background: rgba(13,17,23,0.95)
 .icon-btn:hover { opacity: 0.7; }
 
 /* Status tabs */
-.status-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 0 16px; }
+.status-tabs { display: flex; gap: 0; background: rgba(255,255,255,0.07); border-radius: 10px; padding: 3px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin: 0 16px; }
 .status-tabs::-webkit-scrollbar { display: none; }
-.stab { flex-shrink: 0; padding: 10px 18px; border-radius: var(--pill); border: 1px solid var(--border); font-size: 13px; font-weight: 500; cursor: pointer; background: transparent; color: var(--text-muted); white-space: nowrap; transition: all 0.2s; touch-action: manipulation; min-height: 44px; display: flex; align-items: center; }
-.stab:hover { color: var(--text); border-color: var(--accent); }
-.stab.active { background: var(--accent); color: #fff; font-weight: 600; border-color: transparent; }
+.stab { flex: 1; padding: 7px 14px; border-radius: 8px; border: 1px solid transparent; font-size: 13px; font-weight: 400; cursor: pointer; background: none; color: rgba(255,255,255,0.38); white-space: nowrap; text-align: center; transition: all 0.15s; touch-action: manipulation; min-height: 36px; display: flex; align-items: center; justify-content: center; }
+.stab:hover { color: rgba(255,255,255,0.7); }
+.stab.active { background: #1e2d3d; color: #0ea5e9; font-weight: 500; border-color: rgba(14,165,233,0.3); }
 
 /* Provider & Type bars */
 .sub-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 10px 16px 8px; -webkit-overflow-scrolling: touch; }
@@ -397,7 +397,7 @@ function renderProviderBar() {
   bar.innerHTML = PROVIDERS.map(function(p) {
     var active = p.slug === currentSlug;
     var inner = p.logo
-      ? "<img src=\"" + p.logo + "\" alt=\"" + p.name + "\" style=\"height:26px;width:26px;object-fit:cover;border-radius:5px;\" onerror=\"this.style.display='none';this.nextSibling.style.display='block'\"><span style=\"display:none\">" + p.name + "</span>"
+      ? "<img src=\"" + p.logo + "\" alt=\"" + p.name + "\" style=\"height:26px;width:26px;object-fit:contain;border-radius:6px;\" onerror=\"this.style.display='none';this.nextSibling.style.display='block'\"><span style=\"display:none\">" + p.name + "</span>"
       : p.name;
     return "<div class=\"ppill\" data-slug=\"" + p.slug + "\" style=\"background:" + (active ? p.color : "var(--surface2)") + ";border-color:" + (active ? p.color : "var(--border)") + ";padding:8px 14px;min-width:64px;display:flex;align-items:center;justify-content:center;\">" + inner + "</div>";
   }).join("");
@@ -511,11 +511,10 @@ function loadMyList(status) {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll(".stab").forEach(function(t) {
-    var active = t.getAttribute("data-tab") === tab;
-    t.className = "stab" + (active ? " active" : "");
-    t.style.background = active ? TAB_COLORS[tab] : "";
-    t.style.color = active ? (tab === "browse" ? "#000" : "#000") : "";
-    t.style.borderColor = active ? "transparent" : "";
+    t.className = "stab" + (t.getAttribute("data-tab") === tab ? " active" : "");
+    t.style.background = "";
+    t.style.color = "";
+    t.style.borderColor = "";
   });
   var isBrowse = tab === "browse";
   document.getElementById("provider-bar").style.display = isBrowse ? "flex" : "none";
