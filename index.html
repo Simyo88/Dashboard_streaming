@@ -431,11 +431,11 @@ function loadMyList(status) {
   query.then(function(r) {
     var data = r.data || [];
     if (!data.length) { setEmpty("&#8212;", STATUS[status].label + " ist leer"); return; }
-    var items = data.filter(function(r) { return r.titles; }).map(function(r) {
-      var t = r.titles;
+    var items = data.filter(function(row) { return row.titles; }).map(function(row) {
+      var t = row.titles;
       return {
-        id: t.tmdb_id || r.title_id.replace(/^(series|movie)-/, ""),
-        supabase_id: r.title_id,
+        id: t.tmdb_id || row.title_id.replace(/^(series|movie)-/, ""),
+        supabase_id: row.title_id,
         type: t.media_type || "series",
         title: t.title || "",
         poster: t.poster_path || null,
@@ -444,29 +444,57 @@ function loadMyList(status) {
         tmdbScore: null,
         year: t.year || null,
         genres: [],
-        providers: [],
+        providers: Array.isArray(t.providers) ? t.providers : [],
         seasons: [],
-        year: t.year || null,
-        updated_at: r.updated_at
+        updated_at: row.updated_at
       };
     });
     if (currentSort === "score") items = applySort(items);
     else if (currentSort === "title") items = applySort(items);
     else if (currentSort === "year") items = applySort(items);
-    var series = items.filter(function(i) { return i.type === "series"; });
-    var movies = items.filter(function(i) { return i.type === "movie"; });
-    var html = "";
-    if (series.length) {
-      html += "<div class=\"section-title\">Serien <span style=\"color:var(--text-muted);font-size:14px;font-weight:400\">(" + series.length + ")</span></div>";
-      html += "<div class=\"grid\">" + series.map(cardHTML).join("") + "</div>";
+
+    function renderList() {
+      var series = items.filter(function(i) { return i.type === "series"; });
+      var movies = items.filter(function(i) { return i.type === "movie"; });
+      var html = "";
+      if (series.length) {
+        html += "<div class=\"section-title\">Serien <span style=\"color:var(--text-muted);font-size:14px;font-weight:400\">(" + series.length + ")</span></div>";
+        html += "<div class=\"grid\">" + series.map(cardHTML).join("") + "</div>";
+      }
+      if (movies.length) {
+        html += "<div class=\"section-title\" style=\"margin-top:24px\">Filme <span style=\"color:var(--text-muted);font-size:14px;font-weight:400\">(" + movies.length + ")</span></div>";
+        html += "<div class=\"grid\">" + movies.map(cardHTML).join("") + "</div>";
+      }
+      if (!html) { setEmpty("&#8212;", STATUS[status].label + " ist leer"); return; }
+      document.getElementById("main").innerHTML = html;
+      attachCards();
     }
-    if (movies.length) {
-      html += "<div class=\"section-title\" style=\"margin-top:24px\">Filme <span style=\"color:var(--text-muted);font-size:14px;font-weight:400\">(" + movies.length + ")</span></div>";
-      html += "<div class=\"grid\">" + movies.map(cardHTML).join("") + "</div>";
+
+    var missing = items.filter(function(i) { return !i.providers || !i.providers.length; });
+    if (!missing.length) { renderList(); return; }
+
+    function fetchBatch(batch) {
+      return Promise.all(batch.map(function(item) {
+        return fetch(API + "?action=search&query=" + encodeURIComponent(item.title))
+          .then(function(res) { return res.json(); })
+          .then(function(results) {
+            var arr = Array.isArray(results) ? results : [];
+            var match = arr.find(function(res) {
+              return res.type === item.type && res.title.toLowerCase().trim() === item.title.toLowerCase().trim();
+            }) || arr.find(function(res) { return res.type === item.type; });
+            if (match && match.providers && match.providers.length) {
+              item.providers = match.providers;
+              sb.from("titles").update({ providers: match.providers }).eq("id", item.supabase_id);
+            }
+          }).catch(function() {});
+      }));
     }
-    if (!html) { setEmpty("&#8212;", STATUS[status].label + " ist leer"); return; }
-    document.getElementById("main").innerHTML = html;
-    attachCards();
+
+    var batches = [];
+    for (var i = 0; i < missing.length; i += 5) batches.push(missing.slice(i, i + 5));
+    var p = Promise.resolve();
+    batches.forEach(function(b) { p = p.then(function() { return fetchBatch(b); }); });
+    p.then(renderList);
   });
 }
 
@@ -485,6 +513,18 @@ function switchTab(tab) {
   document.getElementById("sort-bar").style.display = "flex";
   if (isBrowse) loadBrowse();
   else loadMyList(tab);
+}
+
+function renderModalProviders(providers) {
+  if (!providers || !providers.length) return "";
+  var filtered = providers.filter(function(p) { return BLOCKED_PROVIDER_SLUGS.indexOf(p.slug) === -1; });
+  if (!filtered.length) return "";
+  var chips = filtered.slice(0, 6).map(function(p) {
+    var prov = PROVIDERS.find(function(x) { return x.slug === p.slug; });
+    var color = prov ? prov.color : "#333";
+    return "<span style=\"background:" + color + ";padding:4px 10px;border-radius:3px;font-size:11px;font-weight:700;color:#fff\">" + p.name + "</span>";
+  }).join("");
+  return "<div style=\"margin-bottom:16px\"><div style=\"font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px\">Verfügbar bei</div><div style=\"display:flex;gap:5px;flex-wrap:wrap\">" + chips + "</div></div>";
 }
 
 function openModal(item) {
@@ -517,6 +557,7 @@ function openModal(item) {
   if (item.genres && item.genres.length) html += "<div class=\"modal-genres\">" + item.genres.join(" &bull; ") + "</div>";
   html += "</div></div>";
   html += "<div class=\"status-btns\">" + statusBtns + "</div>";
+  html += "<div id=\"modal-providers-section\">" + renderModalProviders(item.providers) + "</div>";
   if (item.overview) html += "<p style=\"font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:18px\">" + item.overview.slice(0,500) + (item.overview.length > 500 ? "..." : "") + "</p>";
   html += "<div id=\"seasons-container\">";
   if (item.seasons && item.seasons.length) {
@@ -528,6 +569,23 @@ function openModal(item) {
 
   document.getElementById("modal").innerHTML = html;
   document.getElementById("modal-overlay").style.display = "flex";
+
+  if (!item.providers || !item.providers.length) {
+    fetch(API + "?action=search&query=" + encodeURIComponent(item.title))
+      .then(function(res) { return res.json(); })
+      .then(function(results) {
+        var arr = Array.isArray(results) ? results : [];
+        var match = arr.find(function(r) {
+          return r.type === item.type && r.title.toLowerCase().trim() === item.title.toLowerCase().trim();
+        }) || arr.find(function(r) { return r.type === item.type; });
+        if (match && match.providers && match.providers.length) {
+          item.providers = match.providers;
+          var section = document.getElementById("modal-providers-section");
+          if (section) section.innerHTML = renderModalProviders(match.providers);
+          sb.from("titles").update({ providers: match.providers }).eq("id", key);
+        }
+      }).catch(function() {});
+  }
 
   document.querySelectorAll(".sbtn").forEach(function(btn) {
     btn.addEventListener("click", function() {
@@ -733,7 +791,7 @@ function setStatus(key, status, item) {
       header.innerHTML = header.innerHTML.replace(/[(][0-9]+[)]/, "(" + count + ")");
     }
   }
-  var titleData = { id: key, tmdb_id: item.id, media_type: item.type, title: item.title, poster_path: item.poster, vote_average: item.imdbScore || item.tmdbScore || null, overview: item.overview || null, year: item.year || null };
+  var titleData = { id: key, tmdb_id: item.id, media_type: item.type, title: item.title, poster_path: item.poster, vote_average: item.imdbScore || item.tmdbScore || null, overview: item.overview || null, year: item.year || null, providers: (item.providers && item.providers.length) ? item.providers : null };
   console.log("Saving status:", key, status, titleData);
   sb.from("titles").upsert(titleData, {onConflict:"id"}).then(function(r) {
     console.log("titles result:", r.error || "OK");
