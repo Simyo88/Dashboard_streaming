@@ -519,10 +519,11 @@ function openModal(item) {
   document.querySelectorAll(".sbtn").forEach(function(btn) {
     btn.addEventListener("click", function() {
       var s = this.getAttribute("data-s");
-      setStatus(key, s, item);
+      var newStatus = userStatuses[key] === s ? "none" : s;
+      setStatus(key, newStatus, item);
       document.querySelectorAll(".sbtn").forEach(function(b) {
         var bs = b.getAttribute("data-s");
-        var active = bs === s;
+        var active = bs === newStatus;
         b.className = "sbtn" + (active ? " active" : "");
         b.style.background = active ? STATUS[bs].color : "";
         b.style.borderColor = active ? "transparent" : "";
